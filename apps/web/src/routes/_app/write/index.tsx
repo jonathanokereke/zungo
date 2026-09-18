@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../../lib/api'
-import type { WritingFeedback } from '@german-app/core'
+import type { WritingFeedback } from '@zungo/core'
 
 export const Route = createFileRoute('/_app/write/')({
   component: WritePage,

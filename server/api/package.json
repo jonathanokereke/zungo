@@ -1,5 +1,5 @@
 {
-  "name": "@german-app/api",
+  "name": "@zungo/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.29.0",
-    "@german-app/core": "*",
-    "@neondatabase/serverless": "^0.10.0",
+    "@zungo/core": "*",
+    "postgres": "^3.4.4",
     "drizzle-orm": "^0.33.0",
     "fastify": "^4.28.0",
     "@fastify/cors": "^9.0.0",
@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "dotenv": "^16.4.0",
     "drizzle-kit": "^0.24.0",
     "tsx": "^4.0.0",
     "typescript": "^5.4.0",

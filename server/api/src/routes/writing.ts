@@ -4,7 +4,7 @@ import { users, writing_sessions, writing_prompts } from '../db/schema'
 import { eq, sql } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 import { streamWritingCorrection } from '../lib/anthropic'
-import { SubmitWritingSchema, WritingFeedbackSchema } from '@german-app/core'
+import { SubmitWritingSchema, WritingFeedbackSchema } from '@zungo/core'
 
 async function getUser(auth0Id: string) {
   const result = await db.select().from(users).where(eq(users.auth0_id, auth0Id)).limit(1)

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth0 } from '@auth0/auth0-react'
 import { apiFetch } from '../../../lib/api'
-import type { Word } from '@german-app/core'
+import type { Word } from '@zungo/core'
 
 export const Route = createFileRoute('/_app/vocabulary/')({
   component: VocabularyPage,

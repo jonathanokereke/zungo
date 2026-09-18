@@ -1,5 +1,5 @@
 {
-  "name": "@german-app/web",
+  "name": "@zungo/web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.2.4",
-    "@german-app/core": "*",
+    "@zungo/core": "*",
     "@tanstack/react-query": "^5.56.0",
     "@tanstack/react-router": "^1.58.0",
     "@tanstack/router-plugin": "^1.168.40",

@@ -5,7 +5,7 @@ import { words, users, reviews } from '../db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 import { lookupWord } from '../lib/anthropic'
-import { CreateWordSchema, WordLookupResultSchema } from '@german-app/core'
+import { CreateWordSchema, WordLookupResultSchema } from '@zungo/core'
 
 async function getUser(auth0Id: string) {
   const result = await db.select().from(users).where(eq(users.auth0_id, auth0Id)).limit(1)

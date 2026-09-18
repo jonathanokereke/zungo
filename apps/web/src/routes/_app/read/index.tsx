@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState, useCallback } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
 import { apiFetch } from '../../../lib/api'
-import type { WordLookupResult } from '@german-app/core'
+import type { WordLookupResult } from '@zungo/core'
 
 export const Route = createFileRoute('/_app/read/')({
   component: ReadPage,
