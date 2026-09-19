@@ -2,7 +2,7 @@ import 'dotenv/config'
 import * as Sentry from '@sentry/node'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
-import jwt from '@fastify/jwt'
+import { fastifyJwt as jwt } from '@fastify/jwt'
 import { env } from './lib/env'
 
 if (env.NODE_ENV === 'production' && process.env.SENTRY_DSN) {
@@ -24,9 +24,10 @@ const app = Fastify({ logger: env.NODE_ENV === 'development' })
 
 await app.register(cors, { origin: env.CORS_ORIGIN })
 
-await app.register(jwt, {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+await app.register(jwt as any, {
   secret: {
-    public: async (_request, token) => {
+    public: async (_request: unknown, token: string) => {
       const decoded = app.jwt.decode<{ header: { kid: string } }>(token)
       if (!decoded || typeof decoded !== 'object' || !('header' in decoded)) {
         throw new Error('Invalid token')
@@ -39,7 +40,6 @@ await app.register(jwt, {
   },
   verify: {
     algorithms: ['RS256'],
-    audience: env.AUTH0_AUDIENCE,
     issuer: `https://${env.AUTH0_DOMAIN}/`,
   },
 })

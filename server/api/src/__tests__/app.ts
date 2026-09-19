@@ -1,4 +1,4 @@
-import Fastify from 'fastify'
+import Fastify, { FastifyRequest } from 'fastify'
 import { wordRoutes } from '../routes/words'
 import { reviewRoutes } from '../routes/reviews'
 import { writingRoutes } from '../routes/writing'
@@ -10,7 +10,7 @@ export async function buildApp() {
   const app = Fastify({ logger: false })
 
   // Stub jwtVerify: succeed only when an Authorization header is present
-  app.decorateRequest('jwtVerify', async function (this: { headers: Record<string, string>; user: unknown }) {
+  app.decorateRequest('jwtVerify', async function (this: FastifyRequest) {
     if (!this.headers['authorization']) {
       const err = new Error('Unauthorized') as Error & { statusCode: number }
       err.statusCode = 401

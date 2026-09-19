@@ -418,6 +418,7 @@ describe('POST /api/writing/correct', () => {
     })
     vi.mocked(streamWritingCorrection).mockImplementation(async (_text, _prompt, _level, onChunk, _onError) => {
       onChunk(feedback)
+      return ''
     })
 
     const res = await app.inject({
