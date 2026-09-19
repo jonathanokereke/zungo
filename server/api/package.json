@@ -11,6 +11,7 @@
     "check-types": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/db/runSeed.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -2,6 +2,7 @@ import { db } from './index'
 import { users, writing_prompts } from './schema'
 import { eq } from 'drizzle-orm'
 import { DEV_AUTH0_ID } from '../lib/auth0'
+import { seedDevWords } from './seedWords'
 
 export async function seedDevUser() {
   const existing = await db.select().from(users).where(eq(users.auth0_id, DEV_AUTH0_ID)).limit(1)
@@ -31,4 +32,6 @@ export async function seedDevUser() {
     ])
     console.log('[seed] Writing prompts created')
   }
+
+  await seedDevWords()
 }
