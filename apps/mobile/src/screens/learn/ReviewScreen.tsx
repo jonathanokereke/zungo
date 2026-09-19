@@ -109,12 +109,6 @@ export function ReviewScreen() {
 
       <View style={rv.cardArea}>
         <Animated.View style={[rv.card, { backgroundColor: C.surface, transform: [{ rotateY: frontRot }] }, flipped && rv.hidden]}>
-          <View style={[rv.cardBadgeLevel, { backgroundColor: 'rgba(55,48,163,.12)' }]}>
-            <Text style={[rv.cardBadgeLevelText, { color: C.primary }]}>B2</Text>
-          </View>
-          <View style={[rv.cardBadgeType, { backgroundColor: 'rgba(245,158,11,.15)' }]}>
-            <Text style={[rv.cardBadgeTypeText, { color: C.accentD }]}>Noun</Text>
-          </View>
           {card.article ? <Text style={[rv.cardArticle, { color: C.primary }]}>{card.article}</Text> : null}
           <Text style={[rv.cardWord, { color: C.text }]}>{card.word}</Text>
           <Text style={[rv.cardHint, { color: C.text3 }]}>tap to reveal →</Text>
@@ -124,10 +118,6 @@ export function ReviewScreen() {
           <Text style={rv.cardBackSub}>{card.word}</Text>
           <Text style={rv.cardBackTrans}>{card.definition}</Text>
           {card.examples?.[0] && <Text style={rv.cardBackExample}>"{card.examples[0]}"</Text>}
-          <View style={rv.cardBackTags}>
-            <View style={rv.cardTag}><Text style={rv.cardTagText}>der Gedanke</Text></View>
-            <View style={rv.cardTag}><Text style={rv.cardTagText}>der Gang</Text></View>
-          </View>
         </Animated.View>
 
         {!flipped && <TouchableOpacity style={rv.flipArea} onPress={flip} />}

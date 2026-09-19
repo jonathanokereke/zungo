@@ -75,7 +75,7 @@ export function DashboardScreen() {
             {[
               { icon: <Icons.Flame size={18} color={C.accent} />, val: progress?.streak ?? 14, lbl: 'Day Streak' },
               { icon: null, val: progress?.level ?? 'B1', lbl: 'Current Level' },
-              { icon: null, val: '2,340', lbl: 'XP Total' },
+              { icon: null, val: `${(progress?.total_words ?? 0) > 0 ? ((progress!.total_words) * 2).toLocaleString() : '—'}`, lbl: 'XP Total' },
             ].map((stat, i) => (
               <View key={i} style={s.heroStat}>
                 <View style={s.heroStatValRow}>
@@ -92,13 +92,13 @@ export function DashboardScreen() {
         <View style={s.sectionHeader}>
           <View>
             <Text style={[s.sectionTitle, { color: C.text }]}>Today's Plan</Text>
-            <Text style={[s.sectionSub, { color: C.text2 }]}>3 of 5 tasks done</Text>
+            <Text style={[s.sectionSub, { color: C.text2 }]}>{progress?.words_due ?? 0} cards due</Text>
           </View>
-          <Text style={[s.sectionMeta, { color: C.text3 }]}>60%</Text>
+          <Text style={[s.sectionMeta, { color: C.text3 }]}>{progress?.mastery_score ?? 0}% mastery</Text>
         </View>
         <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
           <View style={[s.progressTrack, { backgroundColor: C.bgAlt }]}>
-            <View style={[s.progressFill, { width: '60%', backgroundColor: C.primary }]} />
+            <View style={[s.progressFill, { width: `${progress?.mastery_score ?? 0}%` as any, backgroundColor: C.primary }]} />
           </View>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.planRow}>
