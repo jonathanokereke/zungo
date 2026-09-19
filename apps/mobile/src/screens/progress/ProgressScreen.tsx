@@ -1,36 +1,79 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { apiFetch } from '../../lib/api'
+import { useToken } from '../../lib/devAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
 
-const WEEKLY_XP = [
-  { day: 'Mon', xp: 120 }, { day: 'Tue', xp: 180 }, { day: 'Wed', xp: 90 },
-  { day: 'Thu', xp: 210 }, { day: 'Fri', xp: 150 }, { day: 'Sat', xp: 200 }, { day: 'Sun', xp: 75 },
-]
+interface ProgressData { total_words: number; retention_rate_30d: number; reviews_30d: number; user: { streak: number; level: string } }
 
 const SKILL_NAMES = ['Vocabulary', 'Grammar', 'Listening', 'Speaking', 'Writing', 'Reading']
 const SKILL_PCTS  = [78, 62, 55, 40, 70, 83]
 const SKILL_COLORS = ['#3730A3', '#B45309', '#16A34A', '#7C3AED', '#6366F1', '#818CF8']
 
-const maxXP = Math.max(...WEEKLY_XP.map(d => d.xp))
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 export function ProgressScreen() {
+  const getToken = useToken()
   const { colors: C } = useTheme()
+  const [data, setData] = useState<ProgressData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const token = await getToken()
+        const progress = await apiFetch<ProgressData>('/api/progress', {}, token)
+        setData(progress)
+      } catch {} finally { setLoading(false) }
+    }
+    load()
+  }, [])
+
+  const streak = data?.user.streak ?? 0
+  const level = data?.user.level ?? 'B1'
+  const totalWords = data?.total_words ?? 0
+  const retention = data?.retention_rate_30d ?? 0
+  const reviews30d = data?.reviews_30d ?? 0
+
+  // Derive next CEFR level
+  const CEFR = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+  const levelIdx = CEFR.indexOf(level)
+  const nextLevel = CEFR[levelIdx + 1] ?? 'C2'
+  // Simple heuristic: progress toward next level based on total_words
+  const levelPct = Math.min(100, Math.round((totalWords / 500) * 100 * (levelIdx + 1)) % 100 || Math.min(totalWords, 99))
+
+  // Mock weekly XP derived from reviews_30d
+  const avgDaily = Math.round(reviews30d / 30)
+  const WEEKLY_XP = DAYS.map((day, i) => ({
+    day,
+    xp: Math.max(10, avgDaily * 10 + (i % 3 === 0 ? 60 : i % 2 === 0 ? -30 : 20)),
+  }))
+  const maxXP = Math.max(...WEEKLY_XP.map(d => d.xp))
 
   const BADGES = [
-    { icon: <Icons.Flame size={20} color="#B45309" />, name: '14 Day Streak', earned: true },
-    { icon: <Icons.BookOpen size={20} color="#3730A3" />, name: '500 Words', earned: true },
-    { icon: <Icons.Star size={20} color="#B45309" />, name: 'B1 Achieved', earned: true },
-    { icon: <Icons.Zap size={20} color="#7C3AED" />, name: 'Speed Learner', earned: false },
-    { icon: <Icons.Trophy size={20} color="#B45309" />, name: 'Top Student', earned: false },
+    { icon: <Icons.Flame size={20} color="#B45309" />, name: `${streak} Day Streak`, earned: streak >= 7 },
+    { icon: <Icons.BookOpen size={20} color="#3730A3" />, name: '100 Words', earned: totalWords >= 100 },
+    { icon: <Icons.Star size={20} color="#B45309" />, name: `${level} Achieved`, earned: true },
+    { icon: <Icons.Zap size={20} color="#7C3AED" />, name: 'Speed Learner', earned: reviews30d >= 200 },
+    { icon: <Icons.Trophy size={20} color="#B45309" />, name: 'Top Student', earned: retention >= 90 },
   ]
 
+  if (loading) return (
+    <SafeAreaView style={[{ flex: 1, backgroundColor: C.bg }]} edges={['top']}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={C.primary} />
+      </View>
+    </SafeAreaView>
+  )
+
   const STATS = [
-    { icon: <Icons.BookOpen size={18} color={C.primary} />, val: '1,284', lbl: 'Words learned', bg: 'rgba(55,48,163,.1)' },
-    { icon: <Icons.Flame size={18} color={C.accentD} />, val: '14', lbl: 'Day streak', bg: 'rgba(245,158,11,.15)' },
-    { icon: <Icons.Target size={18} color={C.success} />, val: '87%', lbl: 'Retention', bg: 'rgba(22,163,74,.1)' },
-    { icon: <Icons.Clock size={18} color="#7C3AED" />, val: '48h', lbl: 'Study time', bg: 'rgba(124,58,237,.1)' },
+    { icon: <Icons.BookOpen size={18} color={C.primary} />, val: totalWords > 0 ? totalWords.toLocaleString() : '—', lbl: 'Words', bg: 'rgba(55,48,163,.1)' },
+    { icon: <Icons.Flame size={18} color={C.accentD} />, val: streak.toString(), lbl: 'Day streak', bg: 'rgba(245,158,11,.15)' },
+    { icon: <Icons.Target size={18} color={C.success} />, val: retention > 0 ? `${retention}%` : '—', lbl: 'Retention', bg: 'rgba(22,163,74,.1)' },
+    { icon: <Icons.Clock size={18} color="#7C3AED" />, val: reviews30d > 0 ? `${reviews30d}` : '—', lbl: 'Reviews/30d', bg: 'rgba(124,58,237,.1)' },
   ]
 
   return (
@@ -46,20 +89,20 @@ export function ProgressScreen() {
           <View style={pg.cefrRow}>
             <View>
               <Text style={pg.cefrLabel}>Current Level</Text>
-              <Text style={pg.cefrLevel}>B1</Text>
+              <Text style={pg.cefrLevel}>{level}</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={pg.cefrLabel}>Next Level</Text>
-              <Text style={[pg.cefrNext, { color: C.accent }]}>B2</Text>
+              <Text style={[pg.cefrNext, { color: C.accent }]}>{nextLevel}</Text>
             </View>
           </View>
           <View style={pg.cefrTrack}>
-            <View style={[pg.cefrFill, { backgroundColor: C.accent }]} />
-            <View style={pg.cefrThumb} />
+            <View style={[pg.cefrFill, { width: `${levelPct}%` as any, backgroundColor: C.accent }]} />
+            <View style={[pg.cefrThumb, { left: `${levelPct}%` as any }]} />
           </View>
           <View style={pg.cefrFooter}>
-            <Text style={pg.cefrFooterText}>62% to B2</Text>
-            <Text style={pg.cefrFooterText}>Est. 3 months at current pace</Text>
+            <Text style={pg.cefrFooterText}>{levelPct}% to {nextLevel}</Text>
+            <Text style={pg.cefrFooterText}>{totalWords} words learned</Text>
           </View>
         </View>
 
@@ -78,7 +121,7 @@ export function ProgressScreen() {
         <View style={[pg.sectionCard, { backgroundColor: C.surface }]}>
           <View style={pg.sectionCardHeader}>
             <Text style={[pg.sectionCardTitle, { color: C.text }]}>Weekly XP</Text>
-            <Text style={[pg.sectionCardMeta, { color: C.text3 }]}>1,025 this week</Text>
+            <Text style={[pg.sectionCardMeta, { color: C.text3 }]}>{WEEKLY_XP.reduce((s, d) => s + d.xp, 0).toLocaleString()} this week</Text>
           </View>
           <View style={pg.chart}>
             {WEEKLY_XP.map((d, i) => (

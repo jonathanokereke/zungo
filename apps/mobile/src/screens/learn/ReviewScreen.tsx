@@ -8,20 +8,27 @@ import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
 
+interface DueEntry { review: { id: string; word_id: string; interval: number }; word: { id: string; german: string; translation: string; example_sentence?: string } }
 interface ReviewCard { word_id: string; word: string; article?: string; definition: string; examples: string[] }
 type Rating = 1 | 2 | 3 | 4
 
-const SAMPLE: ReviewCard[] = [
-  { word_id: '1', word: 'Gedankengang', article: 'das', definition: 'Train of thought', examples: ['Folgen Sie meinem Gedankengang.'] },
-  { word_id: '2', word: 'Fernweh', article: 'das', definition: 'Wanderlust, longing for distant places', examples: ['Ich habe starkes Fernweh.'] },
-  { word_id: '3', word: 'verschmitzt', article: '', definition: 'Mischievous, impish', examples: ['Sie lächelte ihn verschmitzt an.'] },
-]
+function toCard(entry: DueEntry): ReviewCard {
+  const parts = entry.word.german.split(' ')
+  const hasArticle = ['der', 'die', 'das'].includes(parts[0] ?? '')
+  return {
+    word_id: entry.word.id,
+    word: hasArticle ? parts.slice(1).join(' ') : entry.word.german,
+    article: hasArticle ? parts[0] : undefined,
+    definition: entry.word.translation,
+    examples: entry.word.example_sentence ? [entry.word.example_sentence] : [],
+  }
+}
 
 export function ReviewScreen() {
   const navigation = useNavigation()
   const getToken = useToken()
   const { colors: C } = useTheme()
-  const [cards, setCards] = useState<ReviewCard[]>(SAMPLE)
+  const [cards, setCards] = useState<ReviewCard[]>([])
   const [idx, setIdx] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [done, setDone] = useState(false)
@@ -39,8 +46,8 @@ export function ReviewScreen() {
     async function load() {
       try {
         const token = await getToken()
-        const data = await apiFetch<ReviewCard[]>('/api/reviews/due', {}, token)
-        if (data.length > 0) setCards(data)
+        const data = await apiFetch<DueEntry[]>('/api/reviews/due', {}, token)
+        if (data.length > 0) setCards(data.map(toCard))
       } catch {}
     }
     load()
@@ -57,7 +64,7 @@ export function ReviewScreen() {
     setSubmitting(true)
     try {
       const token = await getToken()
-      await apiFetch('/api/reviews', { method: 'POST', body: JSON.stringify({ word_id: cards[idx].word_id, rating }) }, token)
+      await apiFetch(`/api/reviews/${cards[idx].word_id}`, { method: 'POST', body: JSON.stringify({ quality: rating }) }, token)
     } catch {}
     setSubmitting(false)
     flipAnim.setValue(0)

@@ -27,10 +27,11 @@ export function GrammarScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { colors: C } = useTheme()
 
+  const avgMastery = Math.round(TOPICS.reduce((s, t) => s + t.mastery, 0) / TOPICS.length)
   const STATS = [
-    { val: '68%', label: 'Avg Mastery', icon: <Icons.Target size={16} color={C.primary} />, bg: 'rgba(55,48,163,.1)' },
-    { val: '3', label: 'Due Today', icon: <Icons.Clock size={16} color={C.accentD} />, bg: 'rgba(245,158,11,.15)' },
-    { val: '24', label: 'Exercises done', icon: <Icons.CheckCircle size={16} color={C.success} />, bg: 'rgba(22,163,74,.1)' },
+    { val: `${avgMastery}%`, label: 'Avg Mastery', icon: <Icons.Target size={16} color={C.primary} />, bg: 'rgba(55,48,163,.1)' },
+    { val: `${TOPICS.length}`, label: 'Topics', icon: <Icons.BookOpen size={16} color={C.accentD} />, bg: 'rgba(245,158,11,.15)' },
+    { val: `${TOPICS.filter(t => t.mastery < 70).length}`, label: 'Need practice', icon: <Icons.CheckCircle size={16} color={C.success} />, bg: 'rgba(22,163,74,.1)' },
   ]
 
   return (
@@ -39,7 +40,7 @@ export function GrammarScreen() {
         <View style={gm.header}>
           <View>
             <Text style={[gm.headerTitle, { color: C.text }]}>Grammatik</Text>
-            <Text style={[gm.headerSub, { color: C.text2 }]}>6 topics · 3 due for review</Text>
+            <Text style={[gm.headerSub, { color: C.text2 }]}>{TOPICS.length} topics · {TOPICS.filter(t => t.mastery < 70).length} need practice</Text>
           </View>
           <TouchableOpacity
             style={[gm.drillBtn, { backgroundColor: C.primary }]}

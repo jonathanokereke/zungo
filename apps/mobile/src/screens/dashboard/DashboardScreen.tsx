@@ -10,6 +10,7 @@ import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
 import type { RootStackParamList } from '../../navigation/RootNavigator'
 
+interface ProgressResp { total_words: number; retention_rate_30d: number; user: { level: string; streak: number } }
 interface UserProgress { level: string; streak: number; words_due: number; total_words: number; mastery_score: number }
 
 const WOTD = {
@@ -30,10 +31,19 @@ export function DashboardScreen() {
     async function load() {
       try {
         const token = await getToken()
-        const data = await apiFetch<UserProgress>('/api/progress', {}, token)
-        setProgress(data)
+        const [prog, due] = await Promise.all([
+          apiFetch<ProgressResp>('/api/progress', {}, token),
+          apiFetch<unknown[]>('/api/reviews/due', {}, token),
+        ])
+        setProgress({
+          level: prog.user.level,
+          streak: prog.user.streak,
+          words_due: due.length,
+          total_words: prog.total_words,
+          mastery_score: prog.retention_rate_30d,
+        })
       } catch {
-        setProgress({ level: 'B1', streak: 14, words_due: 32, total_words: 1284, mastery_score: 87 })
+        setProgress({ level: 'B1', streak: 0, words_due: 0, total_words: 0, mastery_score: 0 })
       } finally { setLoading(false) }
     }
     load()

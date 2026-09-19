@@ -1,14 +1,31 @@
+import { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useState } from 'react'
+import { apiFetch } from '../../lib/api'
+import { useToken } from '../../lib/devAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
 
+interface ProgressData { total_words: number; user: { level: string; streak: number } }
+
 export function ProfileScreen() {
+  const getToken = useToken()
   const { colors: C, isDark, toggleTheme } = useTheme()
   const insets = useSafeAreaInsets()
+  const [profileData, setProfileData] = useState<ProgressData | null>(null)
   const [dailyReminder, setDailyReminder] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const token = await getToken()
+        const d = await apiFetch<ProgressData>('/api/progress', {}, token)
+        setProfileData(d)
+      } catch {}
+    }
+    load()
+  }, [])
   const [autoCorrect, setAutoCorrect] = useState(true)
   const [offlineMode, setOfflineMode] = useState(false)
 
@@ -18,11 +35,14 @@ export function ProfileScreen() {
     'Offline Mode': [offlineMode, setOfflineMode],
   }
 
+  const level = profileData?.user.level ?? '…'
+  const streak = profileData?.user.streak ?? 0
+
   const sections = [
     {
       title: 'Learning',
       rows: [
-        { icon: <Icons.Target size={16} color={C.primary} />, iconBg: 'rgba(55,48,163,.12)', label: 'CEFR Level', value: 'B1', chevron: true },
+        { icon: <Icons.Target size={16} color={C.primary} />, iconBg: 'rgba(55,48,163,.12)', label: 'CEFR Level', value: level, chevron: true },
         { icon: <Icons.Clock size={16} color={C.accentD} />, iconBg: 'rgba(245,158,11,.15)', label: 'Daily Goal', value: '30 min', chevron: true },
         { icon: <Icons.Bell size={16} color={C.success} />, iconBg: 'rgba(22,163,74,.1)', label: 'Daily Reminder', toggle: true },
         { icon: <Icons.Download size={16} color="#7C3AED" />, iconBg: 'rgba(124,58,237,.1)', label: 'Offline Mode', toggle: true },
@@ -65,8 +85,8 @@ export function ProfileScreen() {
           <Text style={pf.heroEmail}>jonathanokereke16@gmail.com</Text>
           <View style={pf.heroChips}>
             <View style={pf.heroChip}><Text style={pf.heroChipText}>🇩🇪 Learner</Text></View>
-            <View style={pf.heroChip}><Text style={pf.heroChipText}>B1 Level</Text></View>
-            <View style={pf.heroChip}><Text style={pf.heroChipText}>14 Day Streak 🔥</Text></View>
+            <View style={pf.heroChip}><Text style={pf.heroChipText}>{level} Level</Text></View>
+            {streak > 0 && <View style={pf.heroChip}><Text style={pf.heroChipText}>{streak} Day Streak 🔥</Text></View>}
           </View>
         </View>
 
