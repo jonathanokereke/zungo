@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { useAuth0 } from '@auth0/auth0-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../../lib/api'
+import { useToken } from '../../../lib/devAuth'
 import type { WritingFeedback } from '@zungo/core'
 
 export const Route = createFileRoute('/_app/write/')({
@@ -12,7 +12,7 @@ export const Route = createFileRoute('/_app/write/')({
 const API_URL = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3001'
 
 function WritePage() {
-  const { getAccessTokenSilently } = useAuth0()
+  const getToken = useToken()
   const [userText, setUserText] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [feedback, setFeedback] = useState<WritingFeedback | null>(null)
@@ -21,7 +21,7 @@ function WritePage() {
   const { data: promptData } = useQuery({
     queryKey: ['writing-prompt'],
     queryFn: async () => {
-      const token = await getAccessTokenSilently()
+      const token = await getToken()
       return apiFetch<{ prompt: string; level: string }>('/api/writing/prompt', {}, token)
     },
   })
@@ -35,7 +35,7 @@ function WritePage() {
     setStreaming(true)
     setFeedback(null)
 
-    const token = await getAccessTokenSilently()
+    const token = await getToken()
     let buffer = ''
 
     const response = await fetch(`${API_URL}/api/writing/correct`, {
@@ -73,65 +73,105 @@ function WritePage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-2">Writing Practice</h1>
+    <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="mb-6">
+        <h1 className="font-fraunces text-2xl font-bold text-text-1 mb-1">Writing Practice</h1>
+        <p className="text-sm text-text-3">Get AI corrections on your German writing</p>
+      </div>
+
+      {/* Prompt card */}
       {promptData && (
-        <p className="text-indigo-700 bg-indigo-50 rounded-lg p-3 mb-4">
-          <span className="font-semibold">Prompt:</span> {promptData.prompt}
-        </p>
+        <div className="bg-accent-light border border-accent/30 rounded-2xl p-4 mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-accent text-sm">✨</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-accent">Today's prompt</span>
+            <span className="ml-auto text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full">{promptData.level}</span>
+          </div>
+          <p className="text-text-1 font-medium">{promptData.prompt}</p>
+        </div>
       )}
 
-      <textarea
-        className="w-full h-48 border border-gray-300 rounded-lg p-3 text-sm mb-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        placeholder="Write in German (min 50 characters)…"
-        value={userText}
-        onChange={e => setUserText(e.target.value)}
-        disabled={streaming}
-      />
-      <p className="text-xs text-gray-400 mb-3">{userText.length} characters</p>
-      {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+      {/* Text area */}
+      <div className="bg-surface rounded-2xl border border-[var(--c-border)] overflow-hidden mb-4">
+        <textarea
+          className="w-full p-4 text-sm text-text-1 placeholder-text-3 resize-none focus:outline-none"
+          rows={8}
+          placeholder="Schreiben Sie auf Deutsch… (min. 50 Zeichen)"
+          value={userText}
+          onChange={e => setUserText(e.target.value)}
+          disabled={streaming}
+        />
+        <div className="px-4 pb-3 flex items-center justify-between border-t border-[var(--c-border)]">
+          <span className={`text-xs ${userText.length >= 50 ? 'text-primary' : 'text-text-3'}`}>
+            {userText.length} / 50 min
+          </span>
+          {error && <span className="text-xs text-red-500">{error}</span>}
+        </div>
+      </div>
 
       <button
         onClick={handleSubmit}
         disabled={streaming || userText.length < 50}
-        className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 mb-8"
+        className="w-full bg-primary text-white py-3.5 rounded-2xl font-semibold hover:bg-primary-dark transition-colors disabled:opacity-40 mb-8 flex items-center justify-center gap-2"
       >
-        {streaming ? 'Correcting…' : 'Get correction'}
+        {streaming ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Correcting…
+          </>
+        ) : (
+          'Get AI correction'
+        )}
       </button>
 
+      {/* Feedback */}
       {feedback && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="font-semibold text-lg mb-2">Overall Feedback</h2>
-            <p className="text-gray-700">{feedback.overall_feedback}</p>
-            <span className={`mt-2 inline-block text-xs rounded px-2 py-1 ${
-              feedback.level_assessment === 'above_level' ? 'bg-green-100 text-green-700' :
-              feedback.level_assessment === 'at_level' ? 'bg-blue-100 text-blue-700' :
-              'bg-orange-100 text-orange-700'
-            }`}>{feedback.level_assessment.replace('_', ' ')}</span>
+        <div className="space-y-5">
+          {/* Overall */}
+          <div className="bg-surface rounded-2xl border border-[var(--c-border)] p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-fraunces text-lg font-semibold text-text-1">Feedback</h2>
+              <span className={`text-xs px-3 py-1 rounded-full font-medium ${
+                feedback.level_assessment === 'above_level'
+                  ? 'bg-green-100 text-green-700'
+                  : feedback.level_assessment === 'at_level'
+                  ? 'bg-primary-light text-primary'
+                  : 'bg-accent-light text-accent'
+              }`}>
+                {feedback.level_assessment.replace('_', ' ')}
+              </span>
+            </div>
+            <p className="text-text-2 text-sm leading-relaxed">{feedback.overall_feedback}</p>
           </div>
 
+          {/* Corrections */}
           {feedback.corrections.length > 0 && (
             <div>
-              <h2 className="font-semibold text-lg mb-3">Corrections ({feedback.corrections.length})</h2>
+              <h2 className="font-fraunces text-lg font-semibold text-text-1 mb-3">
+                Corrections ({feedback.corrections.length})
+              </h2>
               <div className="space-y-3">
                 {feedback.corrections.map((c, i) => (
-                  <div key={i} className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex gap-2 flex-wrap mb-1">
-                      <span className="line-through text-red-500">{c.original}</span>
-                      <span className="text-green-600 font-medium">{c.corrected}</span>
+                  <div key={i} className="bg-surface rounded-2xl border border-[var(--c-border)] p-4">
+                    <div className="flex gap-2 flex-wrap items-center mb-2">
+                      <span className="line-through text-red-400 text-sm">{c.original}</span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-text-3">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                      <span className="text-primary font-semibold text-sm">{c.corrected}</span>
                     </div>
-                    <p className="text-sm text-gray-600">{c.explanation}</p>
-                    <p className="text-xs text-indigo-500 mt-1">Rule: {c.rule}</p>
+                    <p className="text-sm text-text-2">{c.explanation}</p>
+                    <p className="text-xs text-text-3 mt-1">Rule: {c.rule}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
+          {/* Corrected text */}
           <div>
-            <h2 className="font-semibold text-lg mb-2">Corrected Text</h2>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-gray-800 whitespace-pre-wrap">
+            <h2 className="font-fraunces text-lg font-semibold text-text-1 mb-3">Corrected text</h2>
+            <div className="bg-primary-light border border-primary/20 rounded-2xl p-4 text-sm text-text-1 whitespace-pre-wrap leading-relaxed">
               {feedback.corrected_text}
             </div>
           </div>

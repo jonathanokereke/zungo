@@ -14,17 +14,10 @@
     "typescript": "7.0.2"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=20"
   },
-  "devEngines": {
-    "packageManager": {
-      "name": "npm",
-      "version": "10.8.2"
-    }
-  },
-  "workspaces": [
-    "apps/*",
-    "packages/*",
-    "server/*"
-  ]
+  "packageManager": "pnpm@10.34.4",
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "browser-tabs-lock"]
+  }
 }

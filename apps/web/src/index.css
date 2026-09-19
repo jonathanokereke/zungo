@@ -2,13 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --c-primary: #0C6B6B;
+  --c-primary-dark: #095454;
+  --c-primary-light: #E8F4F4;
+  --c-accent: #F5A623;
+  --c-accent-light: #FEF3DC;
+  --c-bg: #F7F9F9;
+  --c-surface: #FFFFFF;
+  --c-text-1: #1A2E2E;
+  --c-text-2: #4A6060;
+  --c-text-3: #8AABAB;
+  --c-error: #DC2626;
+  --c-border: #D4E4E4;
+  --nav-h: 64px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  background-color: #f9fafb;
+  background-color: var(--c-bg);
+  color: var(--c-text-1);
 }
 
 #root {
   min-height: 100vh;
+}
+
+/* Card flip animation for SRS review */
+.card-scene {
+  perspective: 1000px;
+}
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.5s ease;
+}
+.card-inner.flipped {
+  transform: rotateY(180deg);
+}
+.card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.card-back {
+  transform: rotateY(180deg);
 }

@@ -1,12 +1,23 @@
+import 'dotenv/config'
+import * as Sentry from '@sentry/node'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
 import { env } from './lib/env'
+
+if (env.NODE_ENV === 'production' && process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+    tracesSampleRate: 0.2,
+  })
+}
 import { authRoutes } from './routes/auth'
 import { wordRoutes } from './routes/words'
 import { reviewRoutes } from './routes/reviews'
 import { writingRoutes } from './routes/writing'
 import { progressRoutes } from './routes/progress'
+import { seedDevUser } from './db/seed'
 import jwksRsa from 'jwks-rsa'
 
 const app = Fastify({ logger: env.NODE_ENV === 'development' })
@@ -35,6 +46,7 @@ await app.register(jwt, {
 
 app.setErrorHandler((error, _request, reply) => {
   app.log.error(error)
+  if (env.NODE_ENV === 'production') Sentry.captureException(error)
   if (error.validation) {
     return reply.code(400).send({ error: { code: 'validation_error', message: error.message } })
   }
@@ -50,6 +62,10 @@ await writingRoutes(app)
 await progressRoutes(app)
 
 app.get('/health', async () => ({ status: 'ok' }))
+
+if (env.NODE_ENV === 'development') {
+  await seedDevUser()
+}
 
 try {
   await app.listen({ port: env.PORT, host: '0.0.0.0' })

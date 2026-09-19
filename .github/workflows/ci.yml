@@ -10,23 +10,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: npx turbo run lint
+        run: pnpm turbo run lint
 
       - name: Type check
-        run: npx turbo run check-types
+        run: pnpm turbo run check-types
 
       - name: Test
-        run: npx turbo run test
+        run: pnpm turbo run test
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
-          AUTH0_AUDIENCE: ${{ secrets.AUTH0_AUDIENCE }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          AUTH0_DOMAIN: test.auth0.com
+          AUTH0_AUDIENCE: https://test-api
+          AUTH0_CLIENT_ID: test-client-id
+          ANTHROPIC_API_KEY: test-key
+          CORS_ORIGIN: http://localhost:5173
+          PORT: "3001"

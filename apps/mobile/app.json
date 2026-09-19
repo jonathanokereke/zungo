@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#4f46e5"
+      "backgroundColor": "#0C6B6B"
     },
     "ios": {
       "supportsTablet": true,
@@ -19,17 +19,16 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#4f46e5"
+        "backgroundColor": "#0C6B6B"
       },
       "package": "com.zungo.app"
     },
     "plugins": [
-      "expo-router",
       [
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#4f46e5"
+          "color": "#0C6B6B"
         }
       ]
     ]

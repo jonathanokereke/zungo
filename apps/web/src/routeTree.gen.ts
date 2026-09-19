@@ -11,12 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppProgressRouteImport } from './routes/_app/progress'
 import { Route as AppReadIndexRouteImport } from './routes/_app/read/index'
 import { Route as AppVocabularyIndexRouteImport } from './routes/_app/vocabulary/index'
 import { Route as AppVocabularyReviewRouteImport } from './routes/_app/vocabulary/review'
 import { Route as AppWriteIndexRouteImport } from './routes/_app/write/index'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,42 +30,64 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/_app/dashboard',
   path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 const AppProgressRoute = AppProgressRouteImport.update({
   id: '/_app/progress',
   path: '/progress',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 const AppReadIndexRoute = AppReadIndexRouteImport.update({
   id: '/_app/read/',
   path: '/read/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 const AppVocabularyIndexRoute = AppVocabularyIndexRouteImport.update({
   id: '/_app/vocabulary/',
   path: '/vocabulary/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 const AppVocabularyReviewRoute = AppVocabularyReviewRouteImport.update({
   id: '/_app/vocabulary/review',
   path: '/vocabulary/review',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 const AppWriteIndexRoute = AppWriteIndexRouteImport.update({
   id: '/_app/write/',
   path: '/write/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/_app/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppRouteChildren = {
+  AppDashboardRoute: AppDashboardRoute,
+  AppProgressRoute: AppProgressRoute,
+  AppReadIndexRoute: AppReadIndexRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppVocabularyIndexRoute: AppVocabularyIndexRoute,
+  AppVocabularyReviewRoute: AppVocabularyReviewRoute,
+  AppWriteIndexRoute: AppWriteIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AppDashboardRoute
   '/progress': typeof AppProgressRoute
+  '/settings': typeof AppSettingsRoute
   '/vocabulary/review': typeof AppVocabularyReviewRoute
   '/read/': typeof AppReadIndexRoute
   '/vocabulary/': typeof AppVocabularyIndexRoute
@@ -74,6 +98,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/dashboard': typeof AppDashboardRoute
   '/progress': typeof AppProgressRoute
+  '/settings': typeof AppSettingsRoute
   '/vocabulary/review': typeof AppVocabularyReviewRoute
   '/read': typeof AppReadIndexRoute
   '/vocabulary': typeof AppVocabularyIndexRoute
@@ -83,8 +108,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/_app': typeof AppRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/progress': typeof AppProgressRoute
+  '/_app/settings': typeof AppSettingsRoute
   '/_app/vocabulary/review': typeof AppVocabularyReviewRoute
   '/_app/read/': typeof AppReadIndexRoute
   '/_app/vocabulary/': typeof AppVocabularyIndexRoute
@@ -97,6 +124,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/progress'
+    | '/settings'
     | '/vocabulary/review'
     | '/read/'
     | '/vocabulary/'
@@ -107,6 +135,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/progress'
+    | '/settings'
     | '/vocabulary/review'
     | '/read'
     | '/vocabulary'
@@ -115,8 +144,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/login'
+    | '/_app'
     | '/_app/dashboard'
     | '/_app/progress'
+    | '/_app/settings'
     | '/_app/vocabulary/review'
     | '/_app/read/'
     | '/_app/vocabulary/'
@@ -126,12 +157,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
-  AppDashboardRoute: typeof AppDashboardRoute
-  AppProgressRoute: typeof AppProgressRoute
-  AppVocabularyReviewRoute: typeof AppVocabularyReviewRoute
-  AppReadIndexRoute: typeof AppReadIndexRoute
-  AppVocabularyIndexRoute: typeof AppVocabularyIndexRoute
-  AppWriteIndexRoute: typeof AppWriteIndexRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -150,47 +176,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AppRouteImport
     }
     '/_app/progress': {
       id: '/_app/progress'
       path: '/progress'
       fullPath: '/progress'
       preLoaderRoute: typeof AppProgressRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AppRouteImport
     }
     '/_app/read/': {
       id: '/_app/read/'
       path: '/read'
       fullPath: '/read/'
       preLoaderRoute: typeof AppReadIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AppRouteImport
     }
     '/_app/vocabulary/': {
       id: '/_app/vocabulary/'
       path: '/vocabulary'
       fullPath: '/vocabulary/'
       preLoaderRoute: typeof AppVocabularyIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AppRouteImport
     }
     '/_app/vocabulary/review': {
       id: '/_app/vocabulary/review'
       path: '/vocabulary/review'
       fullPath: '/vocabulary/review'
       preLoaderRoute: typeof AppVocabularyReviewRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AppRouteImport
     }
     '/_app/write/': {
       id: '/_app/write/'
       path: '/write'
       fullPath: '/write/'
       preLoaderRoute: typeof AppWriteIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AppRouteImport
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRouteImport
     }
   }
 }
@@ -198,12 +238,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
-  AppDashboardRoute: AppDashboardRoute,
-  AppProgressRoute: AppProgressRoute,
-  AppVocabularyReviewRoute: AppVocabularyReviewRoute,
-  AppReadIndexRoute: AppReadIndexRoute,
-  AppVocabularyIndexRoute: AppVocabularyIndexRoute,
-  AppWriteIndexRoute: AppWriteIndexRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
