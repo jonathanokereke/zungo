@@ -8,6 +8,27 @@
       "when": 1789711363570,
       "tag": "0000_useful_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789924110408,
+      "tag": "0001_blushing_baron_strucker",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789928357965,
+      "tag": "0002_even_surge",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789976192746,
+      "tag": "0003_sudden_forge",
+      "breakpoints": true
     }
   ]
 }

@@ -4,12 +4,14 @@ import { Platform } from 'react-native'
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: false,
     shouldSetBadge: false,
   }),
 })
 
-export async function requestPermissionsAndScheduleReminder(): Promise<void> {
+export async function requestPermissionsAndScheduleReminder(hour = 19, minute = 0): Promise<void> {
   if (Platform.OS === 'web') return
 
   const { status: existing } = await Notifications.getPermissionsAsync()
@@ -30,10 +32,10 @@ export async function requestPermissionsAndScheduleReminder(): Promise<void> {
       data: { screen: 'Review' },
     },
     trigger: {
-      hour: 19,
-      minute: 0,
-      repeats: true,
-    } as Notifications.DailyTriggerInput,
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour,
+      minute,
+    },
   })
 }
 

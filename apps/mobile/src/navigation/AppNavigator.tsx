@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen'
 import { LearnScreen } from '../screens/learn/LearnScreen'
-import { ChatScreen } from '../screens/chat/ChatScreen'
+import { WriteScreen } from '../screens/write/WriteScreen'
 import { ProgressScreen } from '../screens/progress/ProgressScreen'
 import { ProfileScreen } from '../screens/profile/ProfileScreen'
 import { Icons } from '../lib/icons'
@@ -14,6 +14,7 @@ export function AppNavigator() {
   const { colors } = useTheme()
   return (
     <Tab.Navigator
+      id="TabNavigator"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
@@ -34,7 +35,7 @@ export function AppNavigator() {
           const s = size - 2
           if (route.name === 'Home')     return <Icons.Home size={s} color={color} />
           if (route.name === 'Learn')    return <Icons.BookOpen size={s} color={color} />
-          if (route.name === 'Chat')     return <Icons.MessageSquare size={s} color={color} />
+          if (route.name === 'Write')    return <Icons.PenLine size={s} color={color} />
           if (route.name === 'Progress') return <Icons.BarChart2 size={s} color={color} />
           if (route.name === 'Profile')  return <Icons.User size={s} color={color} />
           return null
@@ -43,7 +44,7 @@ export function AppNavigator() {
     >
       <Tab.Screen name="Home"     component={DashboardScreen} />
       <Tab.Screen name="Learn"    component={LearnScreen} />
-      <Tab.Screen name="Chat"     component={ChatScreen} />
+      <Tab.Screen name="Write"    component={WriteScreen} />
       <Tab.Screen name="Progress" component={ProgressScreen} />
       <Tab.Screen name="Profile"  component={ProfileScreen} />
     </Tab.Navigator>

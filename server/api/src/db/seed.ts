@@ -1,8 +1,6 @@
 import { db } from './index'
-import { users, writing_prompts, progress, writing_sessions } from './schema'
-import { eq } from 'drizzle-orm'
-import { DEV_AUTH0_ID } from '../lib/auth0'
-import { seedDevWords } from './seedWords'
+import { writing_prompts } from './schema'
+import { seedWordBank } from './seedWords'
 
 const ALL_PROMPTS = [
   // A1
@@ -57,47 +55,7 @@ const ALL_PROMPTS = [
   { prompt: 'Erörtern Sie die Grenzen und Möglichkeiten literarischer Übersetzung.', level: 'C2' as const, topic: 'language' },
 ]
 
-const SAMPLE_WRITING_SESSIONS = [
-  {
-    prompt: 'Beschreibe deinen typischen Morgen.',
-    user_text: 'Ich wache normalerweise um sieben Uhr auf. Dann dusche ich und esse Frühstück. Ich trinke immer Kaffee am Morgen. Danach fahre ich mit dem Zug zur Arbeit.',
-    corrected_text: 'Normalerweise wache ich um sieben Uhr auf. Dann dusche ich mich und frühstücke. Morgens trinke ich immer Kaffee. Anschließend fahre ich mit dem Zug zur Arbeit.',
-    feedback_json: { errors: 2, score: 78, highlights: ['Verbstellung im Nebensatz', 'Reflexivverb bei "duschen"'] },
-    level: 'B1' as const,
-  },
-  {
-    prompt: 'Welche Vor- und Nachteile hat das Leben in einer Großstadt?',
-    user_text: 'In einer Großstadt gibt es viele Möglichkeiten für Arbeit und Freizeit. Man hat Zugang zu guten Restaurants, Museen und kulturellen Veranstaltungen. Allerdings sind die Mieten sehr hoch und es gibt viel Lärm. Die Luft ist oft schlechter als auf dem Land.',
-    corrected_text: 'In einer Großstadt gibt es zahlreiche Möglichkeiten für Arbeit und Freizeit. Man hat Zugang zu guten Restaurants, Museen und kulturellen Veranstaltungen. Allerdings sind die Mieten sehr hoch, und es herrscht viel Lärm. Zudem ist die Luftqualität häufig schlechter als auf dem Land.',
-    feedback_json: { errors: 1, score: 88, highlights: ['Kommasetzung bei Aufzählung', 'Stilistisch treffendere Ausdrücke'] },
-    level: 'B2' as const,
-  },
-  {
-    prompt: 'Inwiefern beeinflusst Sprache unsere Wahrnehmung der Welt?',
-    user_text: 'Die Sprache, die wir sprechen, beeinflusst, wie wir denken und die Welt wahrnehmen. Verschiedene Sprachen haben unterschiedliche Konzepte für Zeit, Farben und soziale Beziehungen. Dies kann dazu führen, dass Sprecher verschiedener Sprachen dieselbe Situation unterschiedlich interpretieren.',
-    corrected_text: 'Die Sprache, die wir sprechen, beeinflusst, wie wir denken und die Welt wahrnehmen. Verschiedene Sprachen verfügen über unterschiedliche Konzepte von Zeit, Farben und sozialen Beziehungen. Dies kann dazu führen, dass Sprecher verschiedener Sprachen dieselbe Situation unterschiedlich interpretieren und bewerten.',
-    feedback_json: { errors: 0, score: 95, highlights: ['Sehr gute Argumentation', 'Präzise Wortwahl'] },
-    level: 'C1' as const,
-  },
-]
-
-export async function seedDevUser() {
-  // ── User ──────────────────────────────────────────────────────────────────
-  let userId: string
-  const existing = await db.select().from(users).where(eq(users.auth0_id, DEV_AUTH0_ID)).limit(1)
-  if (!existing.length) {
-    const [inserted] = await db.insert(users).values({
-      auth0_id: DEV_AUTH0_ID,
-      email: 'dev@zungo.local',
-      level: 'B1',
-      streak: 14,
-    }).returning({ id: users.id })
-    userId = inserted.id
-    console.log('[seed] Dev user created')
-  } else {
-    userId = existing[0].id
-  }
-
+export async function seedSystemData() {
   // ── Writing prompts ───────────────────────────────────────────────────────
   const promptCount = await db.select().from(writing_prompts).limit(1)
   if (!promptCount.length) {
@@ -105,42 +63,6 @@ export async function seedDevUser() {
     console.log(`[seed] ${ALL_PROMPTS.length} writing prompts created`)
   }
 
-  // ── Progress history (28 days) ────────────────────────────────────────────
-  const progressCount = await db.select().from(progress).where(eq(progress.user_id, userId)).limit(1)
-  if (!progressCount.length) {
-    const progressRows = []
-    const today = new Date()
-    for (let i = 27; i >= 0; i--) {
-      const d = new Date(today)
-      d.setDate(d.getDate() - i)
-      const dateStr = d.toISOString().split('T')[0]
-      // simulate realistic activity — some days off, varying intensity
-      const active = Math.random() > 0.2
-      progressRows.push({
-        user_id: userId,
-        date: dateStr,
-        words_reviewed: active ? 10 + Math.floor(Math.random() * 40) : 0,
-        words_learned: active ? Math.floor(Math.random() * 8) : 0,
-        writing_sessions: active && Math.random() > 0.5 ? 1 : 0,
-        streak_count: Math.max(0, 28 - i - Math.floor(Math.random() * 3)),
-      })
-    }
-    await db.insert(progress).values(progressRows)
-    console.log(`[seed] ${progressRows.length} days of progress history created`)
-  }
-
-  // ── Writing sessions ──────────────────────────────────────────────────────
-  const sessionCount = await db.select().from(writing_sessions).where(eq(writing_sessions.user_id, userId)).limit(1)
-  if (!sessionCount.length) {
-    const sessionRows = SAMPLE_WRITING_SESSIONS.map((s, i) => {
-      const d = new Date()
-      d.setDate(d.getDate() - (i * 3 + 1))
-      return { ...s, user_id: userId, created_at: d }
-    })
-    await db.insert(writing_sessions).values(sessionRows)
-    console.log(`[seed] ${sessionRows.length} writing sessions created`)
-  }
-
-  // ── Vocabulary ────────────────────────────────────────────────────────────
-  await seedDevWords()
+  // ── Word bank (system vocabulary, shared across all users) ────────────────
+  await seedWordBank()
 }

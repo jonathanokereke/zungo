@@ -2,31 +2,64 @@ import { useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiFetch } from '../../lib/api'
-import { useToken } from '../../lib/devAuth'
+import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
 
-interface ProgressData { total_words: number; retention_rate_30d: number; reviews_30d: number; user: { streak: number; level: string } }
+interface ProgressData { total_words: number; mastered_words: number; total_xp: number; retention_rate_30d: number; reviews_30d: number; total_writing_sessions: number; user: { streak: number; level: string } }
+interface ActivityItem { type: string; ts: number }
+interface GrammarSession { pct: number }
 
-const SKILL_NAMES = ['Vocabulary', 'Grammar', 'Listening', 'Speaking', 'Writing', 'Reading']
-const SKILL_PCTS  = [78, 62, 55, 40, 70, 83]
-const SKILL_COLORS = ['#3730A3', '#B45309', '#16A34A', '#7C3AED', '#6366F1', '#818CF8']
+// Build last-7-days labels: ['Mon 15', 'Tue 16', …, 'Today']
+function buildLast7Days(): { day: string; date: string }[] {
+  const result = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000)
+    const label = i === 0 ? 'Today' : d.toLocaleDateString('en', { weekday: 'short' })
+    const dateStr = d.toISOString().split('T')[0]!
+    result.push({ day: label, date: dateStr })
+  }
+  return result
+}
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const SKILL_COLORS = ['#3730A3', '#B45309', '#6366F1']
 
 export function ProgressScreen() {
-  const getToken = useToken()
+  const { getAccessToken } = useAuth()
   const { colors: C } = useTheme()
   const [data, setData] = useState<ProgressData | null>(null)
+  const [weeklyXP, setWeeklyXP] = useState<{ day: string; xp: number }[]>(buildLast7Days().map(d => ({ day: d.day, xp: 0 })))
+  const [skillPcts, setSkillPcts] = useState([0, 0, 0])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const token = await getToken()
-        const progress = await apiFetch<ProgressData>('/api/progress', {}, token)
+        const token = await getAccessToken()
+        const [progress, activityItems, grammarSessions] = await Promise.all([
+          apiFetch<ProgressData>('/api/progress', {}, token),
+          apiFetch<ActivityItem[]>('/api/activity', {}, token).catch(() => [] as ActivityItem[]),
+          apiFetch<GrammarSession[]>('/api/grammar/sessions', {}, token).catch(() => [] as GrammarSession[]),
+        ])
         setData(progress)
+
+        // Weekly XP: group by actual calendar date over last 7 days
+        const last7 = buildLast7Days()
+        const xpByDate: Record<string, number> = {}
+        for (const item of activityItems) {
+          const dateStr = new Date(item.ts).toISOString().split('T')[0]!
+          xpByDate[dateStr] = (xpByDate[dateStr] ?? 0) + (item.type === 'writing' ? 50 : 20)
+        }
+        setWeeklyXP(last7.map(d => ({ day: d.day, xp: xpByDate[d.date] ?? 0 })))
+
+        // Skills: Vocabulary (retention), Grammar (avg session score), Writing (sessions × 10, cap 100)
+        const vocabPct = progress.retention_rate_30d
+        const grammarPct = grammarSessions.length > 0
+          ? Math.round(grammarSessions.reduce((s, g) => s + g.pct, 0) / grammarSessions.length)
+          : 0
+        const writingPct = Math.min(100, progress.total_writing_sessions * 10)
+        setSkillPcts([vocabPct, grammarPct, writingPct])
       } catch {} finally { setLoading(false) }
     }
     load()
@@ -35,31 +68,33 @@ export function ProgressScreen() {
   const streak = data?.user.streak ?? 0
   const level = data?.user.level ?? 'B1'
   const totalWords = data?.total_words ?? 0
+  const masteredWords = data?.mastered_words ?? 0
   const retention = data?.retention_rate_30d ?? 0
   const reviews30d = data?.reviews_30d ?? 0
 
-  // Derive next CEFR level
   const CEFR = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+  // Mastered-word targets to "complete" each level — based on research into CEFR vocabulary sizes
+  // These are the words you need to have actively reviewed at each level, not total deck size
+  const LEVEL_MASTERY_TARGETS: Record<string, number> = { A1: 800, A2: 2000, B1: 4000, B2: 8000, C1: 12000, C2: 20000 }
   const levelIdx = CEFR.indexOf(level)
   const nextLevel = CEFR[levelIdx + 1] ?? 'C2'
-  // Simple heuristic: progress toward next level based on total_words
-  const levelPct = Math.min(100, Math.round((totalWords / 500) * 100 * (levelIdx + 1)) % 100 || Math.min(totalWords, 99))
+  const prevTarget = levelIdx > 0 ? (LEVEL_MASTERY_TARGETS[CEFR[levelIdx - 1]!] ?? 0) : 0
+  const thisTarget = LEVEL_MASTERY_TARGETS[level] ?? 1000
+  // Progress = mastered words within the current level's range
+  const levelPct = Math.min(99, Math.round(Math.max(0, masteredWords - prevTarget) / Math.max(1, thisTarget - prevTarget) * 100))
 
-  // Mock weekly XP derived from reviews_30d
-  const avgDaily = Math.round(reviews30d / 30)
-  const WEEKLY_XP = DAYS.map((day, i) => ({
-    day,
-    xp: Math.max(10, avgDaily * 10 + (i % 3 === 0 ? 60 : i % 2 === 0 ? -30 : 20)),
-  }))
-  const maxXP = Math.max(...WEEKLY_XP.map(d => d.xp))
+  const maxXP = Math.max(1, ...weeklyXP.map(d => d.xp))
 
   const BADGES = [
     { icon: <Icons.Flame size={20} color="#B45309" />, name: `${streak} Day Streak`, earned: streak >= 7 },
-    { icon: <Icons.BookOpen size={20} color="#3730A3" />, name: '100 Words', earned: totalWords >= 100 },
+    { icon: <Icons.BookOpen size={20} color="#3730A3" />, name: '100 Mastered', earned: masteredWords >= 100 },
     { icon: <Icons.Star size={20} color="#B45309" />, name: `${level} Achieved`, earned: true },
-    { icon: <Icons.Zap size={20} color="#7C3AED" />, name: 'Speed Learner', earned: reviews30d >= 200 },
+    { icon: <Icons.Zap size={20} color="#7C3AED" />, name: 'Speed Learner', earned: reviews30d >= 50 },
     { icon: <Icons.Trophy size={20} color="#B45309" />, name: 'Top Student', earned: retention >= 90 },
   ]
+
+  // Only skills with real data; Listening/Speaking/Reading have no tracking yet
+  const SKILL_NAMES = ['Vocabulary', 'Grammar', 'Writing']
 
   if (loading) return (
     <SafeAreaView style={[{ flex: 1, backgroundColor: C.bg }]} edges={['top']}>
@@ -102,7 +137,7 @@ export function ProgressScreen() {
           </View>
           <View style={pg.cefrFooter}>
             <Text style={pg.cefrFooterText}>{levelPct}% to {nextLevel}</Text>
-            <Text style={pg.cefrFooterText}>{totalWords} words learned</Text>
+            <Text style={pg.cefrFooterText}>{masteredWords.toLocaleString()} / {thisTarget.toLocaleString()} mastered</Text>
           </View>
         </View>
 
@@ -121,13 +156,17 @@ export function ProgressScreen() {
         <View style={[pg.sectionCard, { backgroundColor: C.surface }]}>
           <View style={pg.sectionCardHeader}>
             <Text style={[pg.sectionCardTitle, { color: C.text }]}>Weekly XP</Text>
-            <Text style={[pg.sectionCardMeta, { color: C.text3 }]}>{WEEKLY_XP.reduce((s, d) => s + d.xp, 0).toLocaleString()} this week</Text>
+            <Text style={[pg.sectionCardMeta, { color: C.text3 }]}>{weeklyXP.reduce((s, d) => s + d.xp, 0).toLocaleString()} this week</Text>
           </View>
           <View style={pg.chart}>
-            {WEEKLY_XP.map((d, i) => (
+            {weeklyXP.map((d, i) => (
               <View key={i} style={pg.chartCol}>
                 <View style={pg.barWrap}>
-                  <View style={[pg.bar, { height: `${(d.xp / maxXP) * 100}%` as any, backgroundColor: i === 3 ? C.accent : C.primary, opacity: i === 3 ? 1 : 0.6 }]} />
+                  <View style={[pg.bar, {
+                    height: d.xp > 0 ? `${(d.xp / maxXP) * 100}%` as any : 4,
+                    backgroundColor: i === new Date().getDay() ? C.accent : C.primary,
+                    opacity: d.xp > 0 ? 1 : 0.2,
+                  }]} />
                 </View>
                 <Text style={[pg.barLabel, { color: C.text3 }]}>{d.day}</Text>
               </View>
@@ -142,10 +181,14 @@ export function ProgressScreen() {
             <View key={i} style={{ marginBottom: i < SKILL_NAMES.length - 1 ? 12 : 0 }}>
               <View style={pg.skillRow}>
                 <Text style={[pg.skillName, { color: C.text2 }]}>{name}</Text>
-                <Text style={[pg.skillPct, { color: SKILL_COLORS[i] }]}>{SKILL_PCTS[i]}%</Text>
+                <Text style={[pg.skillPct, { color: SKILL_COLORS[i] }]}>
+                  {skillPcts[i]! > 0 ? `${skillPcts[i]}%` : '—'}
+                </Text>
               </View>
               <View style={[pg.skillTrack, { backgroundColor: C.bgAlt }]}>
-                <View style={[pg.skillFill, { width: `${SKILL_PCTS[i]}%` as any, backgroundColor: SKILL_COLORS[i] }]} />
+                {skillPcts[i]! > 0 && (
+                  <View style={[pg.skillFill, { width: `${skillPcts[i]}%` as any, backgroundColor: SKILL_COLORS[i] }]} />
+                )}
               </View>
             </View>
           ))}
@@ -182,8 +225,8 @@ const pg = StyleSheet.create({
   cefrLevel: { fontSize: 48, fontFamily: Fonts.bold, color: '#FFFFFF', lineHeight: 54 },
   cefrNext: { fontSize: 48, fontFamily: Fonts.bold, lineHeight: 54 },
   cefrTrack: { height: 6, backgroundColor: 'rgba(255,255,255,.2)', borderRadius: 99, marginBottom: 10 },
-  cefrFill: { width: '62%', height: 6, borderRadius: 99 },
-  cefrThumb: { position: 'absolute', left: '62%', top: -5, width: 16, height: 16, borderRadius: 8, backgroundColor: '#FFFFFF', marginLeft: -8 },
+  cefrFill: { height: 6, borderRadius: 99 },
+  cefrThumb: { position: 'absolute', top: -5, width: 16, height: 16, borderRadius: 8, backgroundColor: '#FFFFFF', marginLeft: -8 },
   cefrFooter: { flexDirection: 'row', justifyContent: 'space-between' },
   cefrFooterText: { fontSize: 11, color: 'rgba(255,255,255,.6)', fontFamily: Fonts.regular },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 20, marginBottom: 16 },

@@ -3,14 +3,31 @@ import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { apiFetch } from '../../lib/api'
-import { useToken } from '../../lib/devAuth'
+import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
 
-interface DueEntry { review: { id: string; word_id: string; interval: number }; word: { id: string; german: string; translation: string; example_sentence?: string } }
-interface ReviewCard { word_id: string; word: string; article?: string; definition: string; examples: string[] }
+interface DueEntry { review: { id: string; word_id: string; interval: number; ease_factor: number; repetition: number }; word: { id: string; german: string; translation: string; example_sentence?: string } }
+interface ReviewCard { word_id: string; word: string; article?: string; definition: string; examples: string[]; interval: number; easeFactor: number; repetition: number }
 type Rating = 1 | 2 | 3 | 4
+
+// SM-2 next interval preview — mirrors server-side calculateNextReview
+// New card (repetition=0): Again<10m, Hard=1d, Good=1d, Easy=4d (Anki-style first-time bonus)
+// Learning card (repetition=1, interval=1): Again<10m, Hard=1d, Good=6d, Easy=8d
+// Mature card (repetition≥2): scaled by easeFactor
+function previewInterval(interval: number, easeFactor: number, repetition: number, quality: Rating): string {
+  if (quality === 1) return '<10m'
+  if (quality === 2) {
+    if (repetition === 0) return '1d'
+    const next = Math.round(interval * 1.2)
+    return next < 2 ? '1d' : `${next}d`
+  }
+  if (repetition === 0) return quality === 4 ? '4d' : '1d'
+  if (repetition === 1) return quality === 4 ? '8d' : '6d'
+  const next = Math.round(interval * easeFactor)
+  return quality === 4 ? `${Math.round(next * 1.3)}d` : `${next}d`
+}
 
 function toCard(entry: DueEntry): ReviewCard {
   const parts = entry.word.german.split(' ')
@@ -21,12 +38,15 @@ function toCard(entry: DueEntry): ReviewCard {
     article: hasArticle ? parts[0] : undefined,
     definition: entry.word.translation,
     examples: entry.word.example_sentence ? [entry.word.example_sentence] : [],
+    interval: entry.review.interval,
+    easeFactor: entry.review.ease_factor,
+    repetition: entry.review.repetition,
   }
 }
 
 export function ReviewScreen() {
   const navigation = useNavigation()
-  const getToken = useToken()
+  const { getAccessToken } = useAuth()
   const { colors: C } = useTheme()
   const [cards, setCards] = useState<ReviewCard[]>([])
   const [idx, setIdx] = useState(0)
@@ -35,17 +55,18 @@ export function ReviewScreen() {
   const [submitting, setSubmitting] = useState(false)
   const flipAnim = useRef(new Animated.Value(0)).current
 
+  const currentCard = cards[idx]
   const RATINGS: { rating: Rating; label: string; interval: string; bg: string; color: string }[] = [
-    { rating: 1, label: 'Again', interval: '<1m', bg: 'rgba(220,38,38,.1)', color: C.error },
-    { rating: 2, label: 'Hard',  interval: '6m',  bg: 'rgba(217,119,6,.1)', color: C.warn },
-    { rating: 3, label: 'Good',  interval: '10m', bg: 'rgba(55,48,163,.1)', color: C.primary },
-    { rating: 4, label: 'Easy',  interval: '4d',  bg: 'rgba(22,163,74,.12)', color: C.success },
+    { rating: 1, label: 'Again', interval: currentCard ? previewInterval(currentCard.interval, currentCard.easeFactor, currentCard.repetition, 1) : '<10m', bg: 'rgba(220,38,38,.1)', color: C.error },
+    { rating: 2, label: 'Hard',  interval: currentCard ? previewInterval(currentCard.interval, currentCard.easeFactor, currentCard.repetition, 2) : '1d',   bg: 'rgba(217,119,6,.1)', color: C.warn },
+    { rating: 3, label: 'Good',  interval: currentCard ? previewInterval(currentCard.interval, currentCard.easeFactor, currentCard.repetition, 3) : '3d',   bg: 'rgba(55,48,163,.1)', color: C.primary },
+    { rating: 4, label: 'Easy',  interval: currentCard ? previewInterval(currentCard.interval, currentCard.easeFactor, currentCard.repetition, 4) : '7d',   bg: 'rgba(22,163,74,.12)', color: C.success },
   ]
 
   useEffect(() => {
     async function load() {
       try {
-        const token = await getToken()
+        const token = await getAccessToken()
         const data = await apiFetch<DueEntry[]>('/api/reviews/due', {}, token)
         if (data.length > 0) setCards(data.map(toCard))
       } catch {}
@@ -63,7 +84,7 @@ export function ReviewScreen() {
     if (submitting) return
     setSubmitting(true)
     try {
-      const token = await getToken()
+      const token = await getAccessToken()
       await apiFetch(`/api/reviews/${cards[idx].word_id}`, { method: 'POST', body: JSON.stringify({ quality: rating }) }, token)
     } catch {}
     setSubmitting(false)
@@ -75,7 +96,7 @@ export function ReviewScreen() {
 
   const frontRot = flipAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] })
   const backRot  = flipAnim.interpolate({ inputRange: [0, 1], outputRange: ['180deg', '360deg'] })
-  const card = cards[idx]
+  const card = currentCard
 
   if (done || cards.length === 0) {
     return (

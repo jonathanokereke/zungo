@@ -10,16 +10,28 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0C6B6B"
+      "backgroundColor": "#12105A"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.zungo.app"
+      "bundleIdentifier": "com.zungo.app",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLName": "app",
+            "CFBundleURLSchemes": ["com.zungo.app", "zungo"]
+          },
+          {
+            "CFBundleURLName": "auth0",
+            "CFBundleURLSchemes": ["com.zungo.app.auth0"]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0C6B6B"
+        "backgroundColor": "#12105A"
       },
       "package": "com.zungo.app"
     },
@@ -28,9 +40,11 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#0C6B6B"
+          "color": "#3730A3"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-router"
     ]
   }
 }

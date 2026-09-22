@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/index'
 import { reviews, words, users, progress } from '../db/schema'
-import { eq, and, lte, sql } from 'drizzle-orm'
+import { eq, and, lte, sql, asc } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 import { calculateNextReview, SubmitReviewSchema } from '@zungo/core'
 
@@ -22,6 +22,7 @@ export async function reviewRoutes(app: FastifyInstance) {
       .from(reviews)
       .innerJoin(words, eq(reviews.word_id, words.id))
       .where(and(eq(reviews.user_id, user.id), lte(reviews.due_date, now)))
+      .orderBy(asc(reviews.due_date))
       .limit(20)
 
     return reply.send({ data: due })

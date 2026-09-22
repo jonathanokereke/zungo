@@ -1,9 +1,9 @@
 import 'dotenv/config'
-import { seedDevUser } from './seed.js'
+import { seedSystemData } from './seed.js'
 
 async function main() {
   console.log('[seed] Starting...')
-  await seedDevUser()
+  await seedSystemData()
   console.log('[seed] Done.')
   process.exit(0)
 }

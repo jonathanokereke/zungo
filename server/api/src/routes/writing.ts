@@ -39,10 +39,12 @@ export async function writingRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: { code: 'validation_error', message: body.error.message } })
     }
 
+    reply.hijack()
     reply.raw.setHeader('Content-Type', 'text/event-stream')
     reply.raw.setHeader('Cache-Control', 'no-cache')
     reply.raw.setHeader('Connection', 'keep-alive')
-    reply.raw.flushHeaders()
+    reply.raw.setHeader('Access-Control-Allow-Origin', '*')
+    reply.raw.writeHead(200)
 
     let fullText = ''
 
@@ -61,7 +63,8 @@ export async function writingRoutes(app: FastifyInstance) {
 
     // Parse and save the session
     try {
-      const feedback = WritingFeedbackSchema.parse(JSON.parse(fullText))
+      const clean = fullText.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim()
+      const feedback = WritingFeedbackSchema.parse(JSON.parse(clean))
       await db.insert(writing_sessions).values({
         user_id: user.id,
         prompt: body.data.prompt,

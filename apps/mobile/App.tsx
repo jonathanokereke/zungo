@@ -4,14 +4,28 @@ import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { useFonts, OpenSans_400Regular, OpenSans_500Medium, OpenSans_600SemiBold, OpenSans_700Bold, OpenSans_400Regular_Italic } from '@expo-google-fonts/open-sans'
 import { ActivityIndicator, StyleSheet, View } from 'react-native'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as Notifications from 'expo-notifications'
+import { Auth0Provider } from 'react-native-auth0'
 import { RootNavigator } from './src/navigation/RootNavigator'
+import { OnboardingNavigator } from './src/navigation/OnboardingNavigator'
 import { ThemeProvider, useTheme } from './src/lib/ThemeContext'
 import { requestPermissionsAndScheduleReminder } from './src/lib/notifications'
+import { apiFetch } from './src/lib/api'
+import { useAuth } from './src/lib/useAuth'
+import { LoginScreen } from './src/screens/auth/LoginScreen'
 import type { RootStackParamList } from './src/navigation/RootNavigator'
 
+const AUTH0_DOMAIN = process.env['EXPO_PUBLIC_AUTH0_DOMAIN'] ?? ''
+const AUTH0_CLIENT_ID = process.env['EXPO_PUBLIC_AUTH0_CLIENT_ID'] ?? ''
+
 const navigationRef = createNavigationContainerRef<RootStackParamList>()
+
+type UserPrefs = {
+  onboarding_complete?: boolean
+  reminder_hour?: number
+  reminder_minute?: number
+}
 
 function AppShell() {
   const [fontsLoaded] = useFonts({
@@ -22,12 +36,56 @@ function AppShell() {
     OpenSans_400Regular_Italic,
   })
   const { isDark, colors } = useTheme()
-  const notificationListener = useRef<Notifications.Subscription>()
-
+  const { isLoading: authLoading, isAuthenticated, getAccessToken, user: authUser, logout } = useAuth()
+  const notificationListener = useRef<ReturnType<typeof Notifications.addNotificationResponseReceivedListener> | undefined>(undefined)
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null)
+  // Safety valve: if Auth0 isLoading never resolves (stale keychain session), clear it and unblock after 4s
+  const [authTimedOut, setAuthTimedOut] = useState(false)
   useEffect(() => {
-    requestPermissionsAndScheduleReminder()
+    if (!authLoading) return
+    const t = setTimeout(() => {
+      logout().catch(() => {})
+      setAuthTimedOut(true)
+    }, 4000)
+    return () => clearTimeout(t)
+  }, [authLoading])
 
-    // Navigate to Review when user taps the daily reminder notification
+  // Once authenticated, sync user to server and check onboarding state
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setOnboardingDone(null)
+      return
+    }
+
+    async function syncAndCheck() {
+      try {
+        const token = await getAccessToken()
+
+        // Ensure user row exists, then sync name/email from ID token
+        const [me] = await Promise.all([
+          apiFetch<{ preferences_json?: UserPrefs | null }>('/api/users/me', {}, token),
+          authUser?.name || authUser?.email
+            ? apiFetch('/api/users/profile', {
+                method: 'POST',
+                body: JSON.stringify({ name: authUser.name, email: authUser.email }),
+              }, token).catch(() => {})
+            : Promise.resolve(),
+        ])
+
+        const prefs = me.preferences_json
+        if (prefs?.onboarding_complete) {
+          await requestPermissionsAndScheduleReminder(prefs.reminder_hour ?? 19, prefs.reminder_minute ?? 0)
+          setOnboardingDone(true)
+        } else {
+          setOnboardingDone(false)
+        }
+      } catch (e: any) {
+        console.warn('syncAndCheck error:', e?.message ?? e)
+        setOnboardingDone(false)
+      }
+    }
+    syncAndCheck()
+
     notificationListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       const screen = response.notification.request.content.data?.screen
       if (screen === 'Review' && navigationRef.isReady()) {
@@ -35,16 +93,40 @@ function AppShell() {
       }
     })
 
-    return () => {
-      notificationListener.current?.remove()
-    }
-  }, [])
+    return () => { notificationListener.current?.remove() }
+  }, [isAuthenticated])
 
-  if (!fontsLoaded) {
+  const ready = fontsLoaded && (!authLoading || authTimedOut)
+
+  if (!ready) {
     return (
       <View style={[s.splash, { backgroundColor: colors.primaryD }]}>
         <ActivityIndicator size="large" color="#FFFFFF" />
       </View>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <NavigationContainer>
+        <LoginScreen />
+      </NavigationContainer>
+    )
+  }
+
+  if (onboardingDone === null) {
+    return (
+      <View style={[s.splash, { backgroundColor: colors.primaryD }]}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
+    )
+  }
+
+  if (!onboardingDone) {
+    return (
+      <NavigationContainer>
+        <OnboardingNavigator onComplete={() => setOnboardingDone(true)} />
+      </NavigationContainer>
     )
   }
 
@@ -53,7 +135,7 @@ function AppShell() {
       <NavigationContainer ref={navigationRef}>
         <RootNavigator />
       </NavigationContainer>
-      <StatusBar style="light" backgroundColor="transparent" translucent />
+      <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor="transparent" translucent />
     </>
   )
 }
@@ -62,7 +144,9 @@ function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppShell />
+        <Auth0Provider domain={AUTH0_DOMAIN} clientId={AUTH0_CLIENT_ID}>
+          <AppShell />
+        </Auth0Provider>
       </ThemeProvider>
     </SafeAreaProvider>
   )

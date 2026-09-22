@@ -31,10 +31,12 @@ export async function streamWritingCorrection(
   let fullText = ''
   try {
     const stream = await anthropic.messages.stream({
-      model: 'claude-opus-4-5',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
       system: SYSTEM_PROMPTS.writingCorrection(level),
-      messages: [{ role: 'user', content: `Prompt: ${prompt}\n\nUser text:\n${userText}` }],
+      messages: [
+        { role: 'user', content: `Prompt: ${prompt}\n\nUser text:\n${userText}\n\nReturn only valid JSON with no markdown code fences.` },
+      ],
     })
 
     for await (const chunk of stream) {
@@ -51,11 +53,12 @@ export async function streamWritingCorrection(
 
 export async function lookupWord(word: string, context: string): Promise<unknown> {
   const response = await anthropic.messages.create({
-    model: 'claude-haiku-3-5-20251001',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 512,
     system: SYSTEM_PROMPTS.wordLookup,
-    messages: [{ role: 'user', content: `Word: ${word}\nContext: ${context}` }],
+    messages: [{ role: 'user', content: `Word: ${word}\nContext: ${context}\n\nReturn only valid JSON, no markdown fences.` }],
   })
-  const text = response.content[0]?.type === 'text' ? response.content[0].text : '{}'
-  return JSON.parse(text)
+  const raw = response.content[0]?.type === 'text' ? response.content[0].text : '{}'
+  const clean = raw.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim()
+  return JSON.parse(clean)
 }

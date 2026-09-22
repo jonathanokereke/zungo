@@ -360,6 +360,21 @@ export const SparklesIcon = icon(() => (
   </>
 ))
 
+export const TrashIcon = icon(() => (
+  <>
+    <Path d="M3 6h18" />
+    <Path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+    <Path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+  </>
+))
+
+export const SearchIcon = icon(() => (
+  <>
+    <Circle cx="11" cy="11" r="8" />
+    <Path d="m21 21-4.3-4.3" />
+  </>
+))
+
 // Convenience named export
 export const Icons = {
   Home: HomeIcon,
@@ -402,5 +417,7 @@ export const Icons = {
   Sun: SunIcon,
   Moon: MoonIcon,
   Refresh: RefreshIcon,
+  Trash: TrashIcon,
+  Search: SearchIcon,
   FlipCard,
 }

@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRoute } from '@react-navigation/native'
+import { useNavigation, useRoute } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
+import { apiFetch } from '../../lib/api'
+import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
@@ -11,159 +13,174 @@ import type { RootStackParamList } from '../../navigation/RootNavigator'
 type ExerciseRoute = RouteProp<RootStackParamList, 'Exercise'>
 
 interface Question {
-  id: number
   sentence: string
-  options: { text: string; correct: boolean }[]
+  options: string[]
+  correct: number
   explanation: string
 }
 
-const QUESTIONS: Question[] = [
-  {
-    id: 1,
-    sentence: 'Ich gebe ___ Buch.',
-    options: [
-      { text: 'dem Mann das', correct: true },
-      { text: 'den Mann das', correct: false },
-      { text: 'der Mann das', correct: false },
-      { text: 'des Mannes das', correct: false },
-    ],
-    explanation: 'After "geben" (to give), the person receiving takes the Dativ case. "Mann" is masculine, so dative article is "dem".',
-  },
-  {
-    id: 2,
-    sentence: 'Wenn ich Zeit ___, würde ich reisen.',
-    options: [
-      { text: 'hätte', correct: true },
-      { text: 'hatte', correct: false },
-      { text: 'habe', correct: false },
-      { text: 'haben', correct: false },
-    ],
-    explanation: 'Konjunktiv II of "haben" is "hätte". Used for hypothetical conditions in the present/future.',
-  },
-]
-
 export function ExerciseScreen() {
   const route = useRoute<ExerciseRoute>()
+  const navigation = useNavigation()
   const { topic, subtitle } = route.params
   const { colors: C } = useTheme()
+  const { getAccessToken } = useAuth()
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [qIdx, setQIdx] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
-  const [showExplanation, setShowExplanation] = useState(false)
   const [score, setScore] = useState(0)
   const [done, setDone] = useState(false)
 
-  const question = QUESTIONS[qIdx]
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const token = await getAccessToken()
+        const resp = await apiFetch<{ questions: Question[]; topic: string; level: string }>(
+          `/api/grammar/exercises?topic=${encodeURIComponent(topic)}`,
+          {},
+          token,
+        )
+        setQuestions(resp.questions)
+      } catch (e: any) {
+        setError(e?.message ?? 'Could not load exercises')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [topic])
+
+  useEffect(() => {
+    if (!done || questions.length === 0) return
+    getAccessToken().then(token =>
+      apiFetch('/api/grammar/session', {
+        method: 'POST',
+        body: JSON.stringify({ topic, score, total: questions.length }),
+      }, token)
+    ).catch(() => {})
+  }, [done])
 
   function choose(optIdx: number) {
     if (selected !== null) return
     setSelected(optIdx)
-    setShowExplanation(true)
-    if (QUESTIONS[qIdx].options[optIdx].correct) setScore(s => s + 1)
+    if (optIdx === questions[qIdx]!.correct) setScore(s => s + 1)
   }
 
   function next() {
-    if (qIdx + 1 >= QUESTIONS.length) { setDone(true); return }
+    if (qIdx + 1 >= questions.length) { setDone(true); return }
     setQIdx(i => i + 1)
     setSelected(null)
-    setShowExplanation(false)
   }
 
-  function optionBorder(i: number) {
-    if (selected === null) return C.border
-    if (question.options[i].correct) return C.success
-    if (selected === i) return C.error
-    return C.border
-  }
+  const question = questions[qIdx]
 
-  function optionBg(i: number) {
-    if (selected === null) return C.bg
-    if (question.options[i].correct) return 'rgba(22,163,74,.06)'
-    if (selected === i) return 'rgba(220,38,38,.06)'
-    return C.bg
-  }
+  if (loading) return (
+    <SafeAreaView style={[ex.center, { backgroundColor: C.bg }]}>
+      <ActivityIndicator size="large" color={C.primary} />
+      <Text style={[ex.loadingText, { color: C.text2 }]}>Generating {topic} exercises…</Text>
+    </SafeAreaView>
+  )
 
-  function letterBg(i: number) {
-    if (selected === null) return C.bgAlt
-    if (question.options[i].correct) return C.success
-    if (selected === i) return C.error
-    return C.bgAlt
-  }
-
-  function letterColor(i: number) {
-    if (selected === null) return C.text2
-    if (question.options[i].correct || selected === i) return '#FFFFFF'
-    return C.text2
-  }
+  if (error) return (
+    <SafeAreaView style={[ex.center, { backgroundColor: C.bg }]}>
+      <Icons.XCircle size={48} color={C.error} />
+      <Text style={[ex.doneTitle, { color: C.text }]}>Couldn't load exercises</Text>
+      <Text style={[ex.doneSub, { color: C.text2 }]}>{error}</Text>
+      <TouchableOpacity style={[ex.backBtn, { backgroundColor: C.primary }]} onPress={() => navigation.goBack()}>
+        <Text style={ex.backBtnText}>Go Back</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
+  )
 
   if (done) {
-    const pct = Math.round((score / QUESTIONS.length) * 100)
-    const trophyColor = pct >= 80 ? C.accentD : pct >= 60 ? C.warn : C.error
+    const pct = Math.round((score / questions.length) * 100)
     return (
       <SafeAreaView style={[ex.center, { backgroundColor: C.bg }]}>
-        <Icons.Trophy size={56} color={trophyColor} />
-        <Text style={[ex.doneTitle, { color: C.text }]}>{pct >= 80 ? 'Ausgezeichnet!' : pct >= 60 ? 'Gut gemacht!' : 'Keep practicing!'}</Text>
-        <Text style={[ex.donePct, { color: C.primary }]}>{pct}%</Text>
-        <Text style={[ex.doneSub, { color: C.text2 }]}>{score} of {QUESTIONS.length} correct</Text>
+        <Text style={{ fontSize: 56 }}>{pct >= 80 ? '🎉' : pct >= 60 ? '👍' : '💪'}</Text>
+        <Text style={[ex.doneTitle, { color: C.text }]}>{score}/{questions.length} correct</Text>
+        <Text style={[ex.doneSub, { color: C.text2 }]}>
+          {pct >= 80 ? 'Excellent mastery of ' : pct >= 60 ? 'Good progress on ' : 'Keep practising '}{topic}!
+        </Text>
+        <View style={[ex.scoreBar, { backgroundColor: C.bgAlt }]}>
+          <View style={[ex.scoreFill, { width: `${pct}%`, backgroundColor: pct >= 80 ? C.success : pct >= 60 ? C.accentD : C.error }]} />
+        </View>
+        <TouchableOpacity style={[ex.backBtn, { backgroundColor: C.primary }]} onPress={() => navigation.goBack()}>
+          <Text style={ex.backBtnText}>Back to Grammar</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     )
   }
 
+  if (!question) return null
+
   return (
-    <SafeAreaView style={[ex.container, { backgroundColor: C.bg }]} edges={['bottom']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <View style={ex.headerRow}>
-          <View>
-            <Text style={[ex.headerTopic, { color: C.text }]}>{topic}</Text>
-            <Text style={[ex.headerSub, { color: C.text2 }]}>{subtitle}</Text>
+    <SafeAreaView style={[{ flex: 1, backgroundColor: C.bg }]} edges={['bottom']}>
+      <ScrollView contentContainerStyle={ex.scroll}>
+        {/* Header */}
+        <View style={ex.topBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icons.ArrowLeft size={22} color={C.text2} />
+          </TouchableOpacity>
+          <View style={{ flex: 1, paddingHorizontal: 12 }}>
+            <View style={[ex.progressTrack, { backgroundColor: C.bgAlt }]}>
+              <View style={[ex.progressFill, { width: `${((qIdx + 1) / questions.length) * 100}%`, backgroundColor: C.primary }]} />
+            </View>
           </View>
-          <Text style={[ex.qCount, { color: C.text3 }]}>{qIdx + 1}/{QUESTIONS.length}</Text>
+          <Text style={[ex.counter, { color: C.text3 }]}>{qIdx + 1}/{questions.length}</Text>
         </View>
 
-        <View style={[ex.progressTrack, { backgroundColor: C.bgAlt }]}>
-          <View style={[ex.progressFill, { width: `${((qIdx + 1) / QUESTIONS.length) * 100}%` as any, backgroundColor: C.primary }]} />
-        </View>
+        <Text style={[ex.topicLabel, { color: C.primary }]}>{topic}</Text>
+        <Text style={[ex.subtitle, { color: C.text3 }]}>{subtitle}</Text>
 
-        <View style={[ex.questionCard, { backgroundColor: C.surface }]}>
-          <Text style={[ex.questionLabel, { color: C.primary }]}>Fill in the blank</Text>
-          <Text style={[ex.questionSentence, { color: C.text }]}>{question.sentence}</Text>
+        <View style={[ex.sentenceCard, { backgroundColor: C.surface }]}>
+          <Text style={[ex.sentence, { color: C.text }]}>{question.sentence}</Text>
         </View>
 
         <View style={{ gap: 10 }}>
-          {question.options.map((opt, i) => (
-            <TouchableOpacity
-              key={i}
-              style={[ex.option, { borderColor: optionBorder(i), backgroundColor: optionBg(i) }]}
-              onPress={() => choose(i)}
-              activeOpacity={0.8}
-              disabled={selected !== null}
-            >
-              <View style={[ex.letter, { backgroundColor: letterBg(i) }]}>
-                <Text style={[ex.letterText, { color: letterColor(i) }]}>{String.fromCharCode(65 + i)}</Text>
-              </View>
-              <Text style={[ex.optionText, { color: selected !== null && opt.correct ? C.success : C.text },
-                selected !== null && opt.correct && { fontFamily: Fonts.semibold }]}>
-                {opt.text}
-              </Text>
-              {selected !== null && opt.correct && <Icons.CheckCircle size={18} color={C.success} />}
-              {selected === i && !opt.correct && <Icons.XCircle size={18} color={C.error} />}
-            </TouchableOpacity>
-          ))}
+          {question.options.map((opt, i) => {
+            const isCorrect = i === question.correct
+            const isSelected = selected === i
+            const revealed = selected !== null
+            const borderColor = !revealed ? C.border : isCorrect ? C.success : isSelected ? C.error : C.border
+            const bg = !revealed ? C.bg : isCorrect ? 'rgba(22,163,74,.07)' : isSelected ? 'rgba(220,38,38,.06)' : C.bg
+            return (
+              <TouchableOpacity
+                key={i}
+                style={[ex.option, { borderColor, backgroundColor: bg }]}
+                onPress={() => choose(i)}
+                disabled={revealed}
+              >
+                <View style={[ex.letter, {
+                  backgroundColor: !revealed ? C.bgAlt : isCorrect ? C.success : isSelected ? C.error : C.bgAlt
+                }]}>
+                  <Text style={[ex.letterText, { color: (revealed && (isCorrect || isSelected)) ? '#FFF' : C.text2 }]}>
+                    {String.fromCharCode(65 + i)}
+                  </Text>
+                </View>
+                <Text style={[ex.optText, { color: C.text, fontFamily: revealed && isCorrect ? Fonts.semibold : Fonts.regular }]}>
+                  {opt}
+                </Text>
+                {revealed && isCorrect && <Icons.CheckCircle size={18} color={C.success} />}
+                {revealed && isSelected && !isCorrect && <Icons.XCircle size={18} color={C.error} />}
+              </TouchableOpacity>
+            )
+          })}
         </View>
 
-        {showExplanation && (
-          <View style={[ex.explanationCard, { backgroundColor: 'rgba(22,163,74,.08)', borderColor: 'rgba(22,163,74,.2)' }]}>
-            <View style={ex.explanationHeader}>
-              <Icons.BookOpen size={14} color={C.success} />
-              <Text style={[ex.explanationTitle, { color: C.success }]}>Erklärung</Text>
-            </View>
+        {selected !== null && (
+          <View style={[ex.explanationBox, { backgroundColor: C.surface, borderColor: C.border }]}>
+            <Icons.BookOpen size={14} color={C.primary} />
             <Text style={[ex.explanationText, { color: C.text2 }]}>{question.explanation}</Text>
           </View>
         )}
 
         {selected !== null && (
           <TouchableOpacity style={[ex.nextBtn, { backgroundColor: C.primary }]} onPress={next}>
-            <Text style={ex.nextBtnText}>{qIdx + 1 >= QUESTIONS.length ? 'See Results' : 'Next Question'}</Text>
-            <Icons.ChevronRight size={18} color="#FFFFFF" />
+            <Text style={ex.nextBtnText}>{qIdx + 1 >= questions.length ? 'See Results' : 'Next Question'}</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -172,28 +189,29 @@ export function ExerciseScreen() {
 }
 
 const ex = StyleSheet.create({
-  container: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  headerTopic: { fontSize: 20, fontFamily: Fonts.semibold },
-  headerSub: { fontSize: 13, marginTop: 2, fontFamily: Fonts.regular },
-  qCount: { fontSize: 14, fontFamily: Fonts.semibold },
-  progressTrack: { height: 6, borderRadius: 99, overflow: 'hidden', marginBottom: 20 },
+  scroll: { padding: 20, paddingBottom: 40 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  progressTrack: { height: 6, borderRadius: 99, overflow: 'hidden' },
   progressFill: { height: 6, borderRadius: 99 },
-  questionCard: { borderRadius: 16, padding: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
-  questionLabel: { fontSize: 11, fontFamily: Fonts.semibold, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
-  questionSentence: { fontSize: 20, fontFamily: Fonts.semibold, lineHeight: 30 },
+  counter: { fontSize: 12, fontFamily: Fonts.regular, width: 36, textAlign: 'right' },
+  topicLabel: { fontSize: 13, fontFamily: Fonts.bold, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2 },
+  subtitle: { fontSize: 13, fontFamily: Fonts.regular, marginBottom: 16 },
+  sentenceCard: { borderRadius: 16, padding: 20, marginBottom: 20 },
+  sentence: { fontSize: 20, fontFamily: Fonts.semibold, lineHeight: 30 },
   option: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, padding: 14, borderWidth: 1.5 },
   letter: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   letterText: { fontSize: 13, fontFamily: Fonts.bold },
-  optionText: { flex: 1, fontSize: 15, fontFamily: Fonts.regular },
-  explanationCard: { marginTop: 16, borderWidth: 1, borderRadius: 14, padding: 14 },
-  explanationHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  explanationTitle: { fontSize: 12, fontFamily: Fonts.semibold, textTransform: 'uppercase', letterSpacing: 0.6 },
-  explanationText: { fontSize: 14, lineHeight: 22, fontFamily: Fonts.regular },
-  nextBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 20, borderRadius: 14, paddingVertical: 16 },
+  optText: { flex: 1, fontSize: 16 },
+  explanationBox: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 16 },
+  explanationText: { flex: 1, fontSize: 13, fontFamily: Fonts.regular, lineHeight: 20 },
+  nextBtn: { marginTop: 20, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   nextBtnText: { fontSize: 16, fontFamily: Fonts.semibold, color: '#FFFFFF' },
-  doneTitle: { fontSize: 26, fontFamily: Fonts.bold, marginTop: 20, marginBottom: 8, textAlign: 'center' },
-  donePct: { fontSize: 52, fontFamily: Fonts.bold, lineHeight: 60 },
-  doneSub: { fontSize: 16, marginTop: 8, fontFamily: Fonts.regular },
+  doneTitle: { fontSize: 24, fontFamily: Fonts.bold, textAlign: 'center' },
+  doneSub: { fontSize: 15, fontFamily: Fonts.regular, textAlign: 'center' },
+  loadingText: { fontSize: 14, fontFamily: Fonts.regular, marginTop: 12 },
+  backBtn: { borderRadius: 12, paddingHorizontal: 28, paddingVertical: 14, marginTop: 8 },
+  backBtnText: { color: '#FFFFFF', fontFamily: Fonts.semibold, fontSize: 16 },
+  scoreBar: { width: '100%', height: 8, borderRadius: 99, overflow: 'hidden', marginVertical: 8 },
+  scoreFill: { height: 8, borderRadius: 99 },
 })

@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { db } from '../db/index'
 import { words, users, reviews } from '../db/schema'
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, and, desc, count, sql } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 import { lookupWord } from '../lib/anthropic'
 import { CreateWordSchema, WordLookupResultSchema } from '@zungo/core'
@@ -18,18 +18,42 @@ export async function wordRoutes(app: FastifyInstance) {
     const user = await getUser(jwt.sub)
     if (!user) return reply.code(404).send({ error: { code: 'not_found', message: 'User not found' } })
 
-    const query = request.query as { page?: string; limit?: string }
+    const query = request.query as { page?: string; limit?: string; pos?: string }
     const page = Math.max(1, Number(query.page ?? 1))
-    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 20)))
+    // When filtering by pos, return all matching words (deck-browsing use case)
+    // When no pos, cap at 200 for performance (recent words view)
+    const defaultLimit = query.pos ? 5000 : 200
+    const limit = Math.min(5000, Math.max(1, Number(query.limit ?? defaultLimit)))
     const offset = (page - 1) * limit
 
+    const where = query.pos
+      ? and(eq(words.user_id, user.id), eq(words.part_of_speech, query.pos))
+      : eq(words.user_id, user.id)
+
     const result = await db.select().from(words)
-      .where(eq(words.user_id, user.id))
+      .where(where)
       .orderBy(desc(words.created_at))
       .limit(limit)
       .offset(offset)
 
     return reply.send({ data: result })
+  })
+
+  // Returns word counts grouped by part_of_speech for all words in the user's deck
+  app.get('/api/words/counts', { preHandler: verifyAuth }, async (request, reply) => {
+    const jwt = request.user as Auth0JwtPayload
+    const user = await getUser(jwt.sub)
+    if (!user) return reply.code(404).send({ error: { code: 'not_found', message: 'User not found' } })
+
+    const rows = await db.select({ pos: words.part_of_speech, count: count() })
+      .from(words)
+      .where(eq(words.user_id, user.id))
+      .groupBy(words.part_of_speech)
+
+    const counts: Record<string, number> = {}
+    for (const row of rows) counts[row.pos] = row.count
+
+    return reply.send({ data: counts })
   })
 
   app.post('/api/words', { preHandler: verifyAuth }, async (request, reply) => {

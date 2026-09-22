@@ -2,35 +2,69 @@ import { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { apiFetch } from '../../lib/api'
-import { useToken } from '../../lib/devAuth'
+import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
+import { requestPermissionsAndScheduleReminder } from '../../lib/notifications'
 
 interface ProgressData { total_words: number; user: { level: string; streak: number } }
+interface Prefs { onboarding_complete?: boolean; daily_goal_minutes?: number; reminder_hour?: number; reminder_minute?: number }
+interface UserMe { name: string; preferred_name: string; email: string; preferences_json?: Prefs | null }
 
 export function ProfileScreen() {
-  const getToken = useToken()
+  const { getAccessToken, logout, user: authUser } = useAuth()
   const { colors: C, isDark, toggleTheme } = useTheme()
   const insets = useSafeAreaInsets()
   const [profileData, setProfileData] = useState<ProgressData | null>(null)
+  const [serverUser, setServerUser] = useState<UserMe | null>(null)
+  const [userPrefs, setUserPrefs] = useState<Prefs>({})
   const [dailyReminder, setDailyReminder] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const token = await getToken()
-        const d = await apiFetch<ProgressData>('/api/progress', {}, token)
+        const token = await getAccessToken()
+        const [d, me] = await Promise.all([
+          apiFetch<ProgressData>('/api/progress', {}, token),
+          apiFetch<UserMe>('/api/users/me', {}, token),
+        ])
         setProfileData(d)
+        setServerUser(me)
+        if (me.preferences_json) setUserPrefs(me.preferences_json)
       } catch {}
     }
     load()
   }, [])
+
+  async function savePrefs(updates: Partial<Prefs>) {
+    try {
+      const token = await getAccessToken()
+      const merged = { ...userPrefs, ...updates }
+      await apiFetch('/api/users/preferences', { method: 'PATCH', body: JSON.stringify(merged) }, token)
+      setUserPrefs(merged)
+      if (updates.reminder_hour !== undefined || updates.reminder_minute !== undefined) {
+        await requestPermissionsAndScheduleReminder(
+          updates.reminder_hour ?? userPrefs.reminder_hour ?? 19,
+          updates.reminder_minute ?? userPrefs.reminder_minute ?? 0,
+        )
+      }
+    } catch {}
+  }
   const [autoCorrect, setAutoCorrect] = useState(true)
   const [offlineMode, setOfflineMode] = useState(false)
 
+  const reminderTime = (() => {
+    const h = userPrefs.reminder_hour ?? 19
+    const m = userPrefs.reminder_minute ?? 0
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  })()
+
   const toggleMap: Record<string, [boolean, (v: boolean) => void]> = {
-    'Daily Reminder': [dailyReminder, setDailyReminder],
+    'Daily Reminder': [dailyReminder, (v) => {
+      setDailyReminder(v)
+      if (v) savePrefs({})
+    }],
     'Auto-correct': [autoCorrect, setAutoCorrect],
     'Offline Mode': [offlineMode, setOfflineMode],
   }
@@ -42,26 +76,15 @@ export function ProfileScreen() {
     {
       title: 'Learning',
       rows: [
-        { icon: <Icons.Target size={16} color={C.primary} />, iconBg: 'rgba(55,48,163,.12)', label: 'CEFR Level', value: level, chevron: true },
-        { icon: <Icons.Clock size={16} color={C.accentD} />, iconBg: 'rgba(245,158,11,.15)', label: 'Daily Goal', value: '30 min', chevron: true },
-        { icon: <Icons.Bell size={16} color={C.success} />, iconBg: 'rgba(22,163,74,.1)', label: 'Daily Reminder', toggle: true },
-        { icon: <Icons.Download size={16} color="#7C3AED" />, iconBg: 'rgba(124,58,237,.1)', label: 'Offline Mode', toggle: true },
-      ],
-    },
-    {
-      title: 'AI Conversation',
-      rows: [
-        { icon: <Icons.Pencil size={16} color={C.primary} />, iconBg: 'rgba(55,48,163,.12)', label: 'Auto-correct', toggle: true },
-        { icon: <Icons.MessageSquare size={16} color={C.accentD} />, iconBg: 'rgba(245,158,11,.15)', label: 'Difficulty Level', value: 'Intermediate', chevron: true },
-        { icon: <Icons.Volume size={16} color={C.success} />, iconBg: 'rgba(22,163,74,.1)', label: 'Voice Speed', value: 'Normal', chevron: true },
+        { icon: <Icons.Target size={16} color={C.primary} />, iconBg: 'rgba(55,48,163,.12)', label: 'CEFR Level', value: level, chevron: false },
+        { icon: <Icons.Clock size={16} color={C.accentD} />, iconBg: 'rgba(245,158,11,.15)', label: 'Daily Goal', value: `${userPrefs.daily_goal_minutes ?? 30} min`, chevron: false },
+        { icon: <Icons.Bell size={16} color={C.success} />, iconBg: 'rgba(22,163,74,.1)', label: 'Daily Reminder', toggle: true, value: dailyReminder ? reminderTime : undefined },
       ],
     },
     {
       title: 'Account',
       rows: [
-        { icon: <Icons.Settings size={16} color={C.text3} />, iconBg: C.bgAlt, label: 'Preferences', chevron: true },
-        { icon: <Icons.User size={16} color={C.text3} />, iconBg: C.bgAlt, label: 'Edit Profile', chevron: true },
-        { icon: <Icons.LogOut size={16} color={C.error} />, iconBg: 'rgba(220,38,38,.1)', label: 'Sign Out', danger: true },
+        { icon: <Icons.LogOut size={16} color={C.error} />, iconBg: 'rgba(220,38,38,.1)', label: 'Sign Out', danger: true, onPress: logout },
       ],
     },
   ]
@@ -79,10 +102,10 @@ export function ProfileScreen() {
               : <Icons.Moon size={16} color="rgba(255,255,255,.85)" />}
           </TouchableOpacity>
           <View style={[pf.avatarWrap, { backgroundColor: C.accent }]}>
-            <Text style={[pf.avatarText, { color: C.primaryD }]}>J</Text>
+            <Text style={[pf.avatarText, { color: C.primaryD }]}>{(serverUser?.preferred_name || serverUser?.name || authUser?.name || '?').charAt(0).toUpperCase()}</Text>
           </View>
-          <Text style={pf.heroName}>Jonathan Okereke</Text>
-          <Text style={pf.heroEmail}>jonathanokereke16@gmail.com</Text>
+          <Text style={pf.heroName}>{serverUser?.preferred_name || serverUser?.name || authUser?.name || 'Learner'}</Text>
+          <Text style={pf.heroEmail}>{serverUser?.email || authUser?.email || '—'}</Text>
           <View style={pf.heroChips}>
             <View style={pf.heroChip}><Text style={pf.heroChipText}>🇩🇪 Learner</Text></View>
             <View style={pf.heroChip}><Text style={pf.heroChipText}>{level} Level</Text></View>
@@ -98,7 +121,7 @@ export function ProfileScreen() {
                 const togglePair = row.toggle ? toggleMap[row.label] : undefined
                 return (
                   <View key={ri}>
-                    <TouchableOpacity style={pf.row} activeOpacity={row.toggle ? 1 : 0.7}>
+                    <TouchableOpacity style={pf.row} activeOpacity={row.toggle ? 1 : 0.7} onPress={(row as any).onPress}>
                       <View style={[pf.rowIcon, { backgroundColor: row.iconBg }]}>{row.icon}</View>
                       <Text style={[pf.rowLabel, { color: row.danger ? C.error : C.text }]}>{row.label}</Text>
                       {row.value && <Text style={[pf.rowValue, { color: C.text3 }]}>{row.value}</Text>}

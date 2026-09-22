@@ -1,37 +1,61 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { apiFetch } from '../../lib/api'
+import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
 import type { RootStackParamList } from '../../navigation/RootNavigator'
 
-const TOPICS = [
-  { title: 'Der Dativ', subtitle: 'Indirect object case', mastery: 90, level: 'A2', color: '#16A34A' },
-  { title: 'Konjunktiv II', subtitle: 'Subjunctive mood', mastery: 62, level: 'B1', color: '#B45309' },
-  { title: 'Passiv Konstruktionen', subtitle: 'Passive voice', mastery: 45, level: 'B1', color: '#3730A3' },
-  { title: 'Relativsätze', subtitle: 'Relative clauses', mastery: 38, level: 'B2', color: '#DC2626' },
-  { title: 'Modalverben', subtitle: 'Modal verbs', mastery: 74, level: 'A2', color: '#7C3AED' },
-  { title: 'Genitiv', subtitle: 'Possessive case', mastery: 55, level: 'B1', color: '#6366F1' },
-]
-
-function masteryColor(pct: number, colors: any) {
-  if (pct >= 80) return colors.success
-  if (pct >= 60) return colors.accentD
-  if (pct >= 40) return colors.warn
-  return colors.error
-}
+interface Topic { title: string; subtitle: string; minLevel: string; color: string; mastery: number }
+interface TopicsResp { topics: Topic[]; level: string }
 
 export function GrammarScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+  const { getAccessToken } = useAuth()
   const { colors: C } = useTheme()
+  const [topics, setTopics] = useState<Topic[]>([])
+  const [userLevel, setUserLevel] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  const avgMastery = Math.round(TOPICS.reduce((s, t) => s + t.mastery, 0) / TOPICS.length)
+  useEffect(() => {
+    async function load() {
+      setLoadError(null)
+      try {
+        const token = await getAccessToken()
+        const resp = await apiFetch<TopicsResp>('/api/grammar/topics', {}, token)
+        setTopics(resp.topics)
+        setUserLevel(resp.level)
+      } catch (e: any) {
+        setLoadError(e?.message ?? 'Could not load grammar topics')
+        setTopics([])
+      } finally { setLoading(false) }
+    }
+    load()
+  }, [])
+
+  if (loading) return (
+    <SafeAreaView style={[{ flex: 1, backgroundColor: '#fff' }]} edges={['top']}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    </SafeAreaView>
+  )
+
+  const practisedTopics = topics.filter(t => t.mastery > 0)
+  const avgMastery = practisedTopics.length > 0
+    ? Math.round(practisedTopics.reduce((s, t) => s + t.mastery, 0) / practisedTopics.length)
+    : 0
+  const needPractice = topics.filter(t => t.mastery < 70).length
+
   const STATS = [
-    { val: `${avgMastery}%`, label: 'Avg Mastery', icon: <Icons.Target size={16} color={C.primary} />, bg: 'rgba(55,48,163,.1)' },
-    { val: `${TOPICS.length}`, label: 'Topics', icon: <Icons.BookOpen size={16} color={C.accentD} />, bg: 'rgba(245,158,11,.15)' },
-    { val: `${TOPICS.filter(t => t.mastery < 70).length}`, label: 'Need practice', icon: <Icons.CheckCircle size={16} color={C.success} />, bg: 'rgba(22,163,74,.1)' },
+    { val: practisedTopics.length > 0 ? `${avgMastery}%` : '—', label: 'Avg Mastery', icon: <Icons.Target size={16} color={C.primary} />, bg: 'rgba(55,48,163,.1)' },
+    { val: `${topics.length}`, label: `${userLevel} Topics`, icon: <Icons.BookOpen size={16} color={C.accentD} />, bg: 'rgba(245,158,11,.15)' },
+    { val: `${needPractice}`, label: 'Need practice', icon: <Icons.CheckCircle size={16} color={C.success} />, bg: 'rgba(22,163,74,.1)' },
   ]
 
   return (
@@ -40,11 +64,17 @@ export function GrammarScreen() {
         <View style={gm.header}>
           <View>
             <Text style={[gm.headerTitle, { color: C.text }]}>Grammatik</Text>
-            <Text style={[gm.headerSub, { color: C.text2 }]}>{TOPICS.length} topics · {TOPICS.filter(t => t.mastery < 70).length} need practice</Text>
+            <Text style={[gm.headerSub, { color: C.text2 }]}>{topics.length} topics for {userLevel} · {needPractice} need practice</Text>
           </View>
           <TouchableOpacity
             style={[gm.drillBtn, { backgroundColor: C.primary }]}
-            onPress={() => navigation.navigate('Exercise', { topic: 'Daily Drill', subtitle: 'Mixed practice' })}
+            onPress={() => {
+              // Pick a random topic from the loaded set for the Daily Drill
+              const drillTopic = topics.length > 0
+                ? topics[Math.floor(Math.random() * topics.length)]!
+                : { title: 'Mixed Grammar', subtitle: 'Mixed practice' }
+              navigation.navigate('Exercise', { topic: drillTopic.title, subtitle: drillTopic.subtitle ?? 'Daily Drill' })
+            }}
           >
             <Icons.Zap size={14} color="#FFFFFF" />
             <Text style={gm.drillBtnText}>Daily Drill</Text>
@@ -63,57 +93,69 @@ export function GrammarScreen() {
           </View>
         </View>
 
-        {TOPICS.map((topic, i) => (
+        {topics.map((topic, i) => (
           <TouchableOpacity
             key={i}
             style={[gm.topicCard, { backgroundColor: C.surface }]}
             onPress={() => navigation.navigate('Exercise', { topic: topic.title, subtitle: topic.subtitle })}
+            activeOpacity={0.82}
           >
-            <View style={[gm.topicAccent, { backgroundColor: topic.color }]} />
-            <View style={{ flex: 1 }}>
-              <View style={gm.topicHeader}>
-                <Text style={[gm.topicTitle, { color: C.text }]}>{topic.title}</Text>
-                <View style={[gm.levelBadge, { backgroundColor: topic.color + '22' }]}>
-                  <Text style={[gm.levelBadgeText, { color: topic.color }]}>{topic.level}</Text>
+            <View style={gm.topicBody}>
+              <View style={gm.topicTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[gm.topicTitle, { color: C.text }]}>{topic.title}</Text>
+                  <Text style={[gm.topicSub, { color: C.text3 }]}>{topic.subtitle}</Text>
+                </View>
+                <View style={[gm.levelBadge, { backgroundColor: topic.color + '18' }]}>
+                  <Text style={[gm.levelBadgeText, { color: topic.color }]}>{topic.minLevel}</Text>
                 </View>
               </View>
-              <Text style={[gm.topicSub, { color: C.text3 }]}>{topic.subtitle}</Text>
-              <View style={gm.masteryRow}>
-                <View style={[gm.masteryTrack, { backgroundColor: C.bgAlt }]}>
-                  <View style={[gm.masteryFill, { width: `${topic.mastery}%` as any, backgroundColor: masteryColor(topic.mastery, C) }]} />
+              <View style={gm.progressRow}>
+                <View style={[gm.progressTrack, { backgroundColor: C.bgAlt }]}>
+                  <View style={[gm.progressFill, { width: `${topic.mastery}%` as any, backgroundColor: topic.mastery >= 70 ? C.success : topic.color }]} />
                 </View>
-                <Text style={[gm.masteryPct, { color: masteryColor(topic.mastery, C) }]}>{topic.mastery}%</Text>
+                <Text style={[gm.masteryPct, { color: topic.mastery >= 70 ? C.success : C.text3 }]}>
+                  {topic.mastery > 0 ? `${topic.mastery}%` : 'New'}
+                </Text>
               </View>
             </View>
-            <Icons.ChevronRight size={18} color={C.text3} />
+            <Icons.ChevronRight size={16} color={C.text3} />
           </TouchableOpacity>
         ))}
+
+        {topics.length === 0 && (
+          <View style={{ alignItems: 'center', padding: 40 }}>
+            <Text style={[{ color: C.text2, fontFamily: Fonts.regular, textAlign: 'center' }]}>
+              {loadError ?? 'Could not load grammar topics. Please check your connection.'}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   )
 }
 
 const gm = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingBottom: 16 },
-  headerTitle: { fontSize: 28, fontFamily: Fonts.bold },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingBottom: 12 },
+  headerTitle: { fontSize: 22, fontFamily: Fonts.bold },
   headerSub: { fontSize: 13, marginTop: 2, fontFamily: Fonts.regular },
   drillBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 },
   drillBtnText: { color: '#FFFFFF', fontFamily: Fonts.semibold, fontSize: 13 },
-  overviewCard: { marginHorizontal: 20, marginBottom: 16, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
-  overviewRow: { flexDirection: 'row', gap: 8 },
-  overviewStat: { flex: 1, alignItems: 'center', gap: 6 },
+  overviewCard: { marginHorizontal: 20, borderRadius: 16, padding: 16, marginBottom: 16 },
+  overviewRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  overviewStat: { alignItems: 'center', gap: 6 },
   overviewIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   overviewVal: { fontSize: 18, fontFamily: Fonts.bold },
-  overviewLbl: { fontSize: 11, fontFamily: Fonts.regular, textAlign: 'center' },
-  topicCard: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 20, marginBottom: 10, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
-  topicAccent: { width: 4, borderRadius: 99, alignSelf: 'stretch', minHeight: 50 },
-  topicHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
-  topicTitle: { fontSize: 16, fontFamily: Fonts.semibold },
-  levelBadge: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
-  levelBadgeText: { fontSize: 11, fontFamily: Fonts.semibold },
-  topicSub: { fontSize: 12, marginBottom: 10, fontFamily: Fonts.regular },
-  masteryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  masteryTrack: { flex: 1, height: 6, borderRadius: 99, overflow: 'hidden' },
-  masteryFill: { height: 6, borderRadius: 99 },
-  masteryPct: { fontSize: 12, fontFamily: Fonts.semibold, minWidth: 36, textAlign: 'right' },
+  overviewLbl: { fontSize: 11, fontFamily: Fonts.regular },
+  topicCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 10, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
+  topicBody: { flex: 1, gap: 10 },
+  topicTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  topicTitle: { fontSize: 15, fontFamily: Fonts.semibold },
+  topicSub: { fontSize: 12, fontFamily: Fonts.regular, marginTop: 2 },
+  levelBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, flexShrink: 0 },
+  levelBadgeText: { fontSize: 11, fontFamily: Fonts.bold },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  progressTrack: { flex: 1, height: 5, borderRadius: 99, overflow: 'hidden' },
+  progressFill: { height: 5, borderRadius: 99 },
+  masteryPct: { fontSize: 11, fontFamily: Fonts.semibold, width: 32, textAlign: 'right' },
 })

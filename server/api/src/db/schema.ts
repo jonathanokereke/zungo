@@ -5,8 +5,10 @@ export const cefrLevelEnum = pgEnum('cefr_level', ['A1', 'A2', 'B1', 'B2', 'C1',
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   auth0_id: text('auth0_id').notNull().unique(),
-  email: text('email').notNull(),
-  level: cefrLevelEnum('level').notNull().default('B1'),
+  email: text('email').notNull().default(''),
+  name: text('name').notNull().default(''),
+  preferred_name: text('preferred_name').notNull().default(''),
+  level: cefrLevelEnum('level').notNull().default('A1'),
   streak: integer('streak').notNull().default(0),
   last_active: timestamp('last_active', { withTimezone: true }),
   preferences_json: jsonb('preferences_json'),
@@ -61,4 +63,33 @@ export const writing_prompts = pgTable('writing_prompts', {
   prompt: text('prompt').notNull(),
   level: cefrLevelEnum('level').notNull(),
   topic: text('topic').notNull(),
+})
+
+export const word_bank = pgTable('word_bank', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  german: text('german').notNull().unique(),
+  translation: text('translation').notNull(),
+  part_of_speech: text('part_of_speech').notNull(),
+  example_sentence: text('example_sentence'),
+  cefr_level: cefrLevelEnum('cefr_level').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const chat_sessions = pgTable('chat_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  scenario: text('scenario').notNull(),
+  messages_json: jsonb('messages_json').notNull(),
+  message_count: integer('message_count').notNull().default(0),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const grammar_sessions = pgTable('grammar_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  topic: text('topic').notNull(),
+  score: integer('score').notNull(),
+  total: integer('total').notNull(),
+  pct: integer('pct').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })

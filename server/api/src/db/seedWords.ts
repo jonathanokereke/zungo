@@ -1,7 +1,30 @@
 import { db } from './index'
-import { words, reviews, users } from './schema'
-import { eq } from 'drizzle-orm'
-import { DEV_AUTH0_ID } from '../lib/auth0'
+import { words, reviews, word_bank } from './schema'
+import { eq, inArray } from 'drizzle-orm'
+
+type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
+
+// Level ordering for "include all levels up to X" queries
+const CEFR_ORDER: CefrLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+
+// Index boundaries: each entry = (start index, level). Entries are arranged in the
+// WORD_BANK array in CEFR order so this maps index ranges to levels.
+const LEVEL_BOUNDARIES: { start: number; level: CefrLevel }[] = [
+  { start: 0, level: 'A1' },
+  { start: 40, level: 'A2' },
+  { start: 60, level: 'B1' },
+  { start: 115, level: 'B2' },
+  { start: 164, level: 'C1' },
+  { start: 209, level: 'C2' },
+]
+
+function getLevelForIndex(i: number): CefrLevel {
+  let level: CefrLevel = 'A1'
+  for (const b of LEVEL_BOUNDARIES) {
+    if (i >= b.start) level = b.level
+  }
+  return level
+}
 
 // 350 words spanning A1–C2
 const WORD_BANK = [
@@ -295,15 +318,43 @@ const WORD_BANK = [
   { german: 'wohlgemerkt', translation: 'mind you / note well', part_of_speech: 'adverb', example_sentence: 'Das gilt, wohlgemerkt, nur unter bestimmten Bedingungen.' },
 ]
 
-export async function seedWords(userId: string): Promise<void> {
+export async function seedWordBank(): Promise<void> {
+  const existing = await db.select().from(word_bank).limit(1)
+  if (existing.length) {
+    console.log('[seed] word_bank already populated — skipping')
+    return
+  }
+  const seen = new Set<string>()
+  const rows = WORD_BANK
+    .map((w, i) => ({ ...w, cefr_level: getLevelForIndex(i) as CefrLevel }))
+    .filter(w => {
+      if (seen.has(w.german)) return false
+      seen.add(w.german)
+      return true
+    })
+  await db.insert(word_bank).values(rows).onConflictDoNothing()
+  console.log(`[seed] ${rows.length} words inserted into word_bank`)
+}
+
+export async function seedWordsForUser(userId: string, maxLevel: CefrLevel): Promise<void> {
   const existing = await db.select().from(words).where(eq(words.user_id, userId)).limit(1)
   if (existing.length) {
     console.log('[seed] Words already seeded for this user — skipping')
     return
   }
 
+  const eligibleLevels = CEFR_ORDER.slice(0, CEFR_ORDER.indexOf(maxLevel) + 1) as CefrLevel[]
+  const bankWords = await db.select().from(word_bank)
+    .where(inArray(word_bank.cefr_level, eligibleLevels))
+
   const now = new Date()
-  const wordRows = WORD_BANK.map(w => ({ ...w, user_id: userId }))
+  const wordRows = bankWords.map(w => ({
+    user_id: userId,
+    german: w.german,
+    translation: w.translation,
+    part_of_speech: w.part_of_speech,
+    example_sentence: w.example_sentence,
+  }))
   const inserted = await db.insert(words).values(wordRows).returning({ id: words.id })
 
   // Spread due dates: ~40% due now, rest spread over next 7 days to simulate
@@ -327,11 +378,7 @@ export async function seedWords(userId: string): Promise<void> {
   console.log(`[seed] ${inserted.length} words + review cards created for user ${userId}`)
 }
 
-export async function seedDevWords(): Promise<void> {
-  const devUsers = await db.select().from(users).where(eq(users.auth0_id, DEV_AUTH0_ID)).limit(1)
-  if (!devUsers.length) {
-    console.log('[seed] Dev user not found — run seedDevUser first')
-    return
-  }
-  await seedWords(devUsers[0].id)
+export async function seedWords(userId: string): Promise<void> {
+  await seedWordsForUser(userId, 'B1')
 }
+

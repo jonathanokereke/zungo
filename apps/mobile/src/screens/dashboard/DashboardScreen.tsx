@@ -4,36 +4,39 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { apiFetch } from '../../lib/api'
-import { useToken } from '../../lib/devAuth'
+import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
 import type { RootStackParamList } from '../../navigation/RootNavigator'
 
-interface ProgressResp { total_words: number; retention_rate_30d: number; user: { level: string; streak: number } }
-interface UserProgress { level: string; streak: number; words_due: number; total_words: number; mastery_score: number }
-
-const WOTD = {
-  word: 'Verschmitzt', article: 'Adjektiv · B2',
-  def: 'Mischievous, impish; having a sly, roguish quality that is nonetheless charming.',
-  example: '"Sie lächelte ihn verschmitzt an." — She gave him a mischievous smile.',
-}
+interface ProgressResp { total_words: number; total_xp: number; retention_rate_30d: number; user: { level: string; streak: number } }
+interface UserProgress { level: string; streak: number; words_due: number; total_words: number; mastery_score: number; total_xp: number }
+interface ActivityItem { type: string; title: string; sub: string; time: string }
+interface WordItem { german: string; translation: string; part_of_speech: string; example_sentence?: string }
+interface UserMe { email: string; level: string; preferred_name: string; name: string }
 
 export function DashboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
-  const getToken = useToken()
+  const { getAccessToken } = useAuth()
   const { colors: C, isDark, toggleTheme } = useTheme()
   const insets = useSafeAreaInsets()
   const [progress, setProgress] = useState<UserProgress | null>(null)
+  const [activity, setActivity] = useState<ActivityItem[]>([])
+  const [wotd, setWotd] = useState<WordItem | null>(null)
+  const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const token = await getToken()
-        const [prog, due] = await Promise.all([
+        const token = await getAccessToken()
+        const [prog, due, acts, me, words] = await Promise.all([
           apiFetch<ProgressResp>('/api/progress', {}, token),
           apiFetch<unknown[]>('/api/reviews/due', {}, token),
+          apiFetch<ActivityItem[]>('/api/activity', {}, token).catch(() => [] as ActivityItem[]),
+          apiFetch<UserMe>('/api/users/me', {}, token).catch(() => ({ email: '', level: 'B1' }) as UserMe),
+          apiFetch<WordItem[]>('/api/words?limit=100', {}, token).catch(() => [] as WordItem[]),
         ])
         setProgress({
           level: prog.user.level,
@@ -41,9 +44,17 @@ export function DashboardScreen() {
           words_due: due.length,
           total_words: prog.total_words,
           mastery_score: prog.retention_rate_30d,
+          total_xp: prog.total_xp ?? 0,
         })
+        setActivity(acts)
+        setUserName(me.preferred_name || me.name || me.email.split('@')[0] || 'Learner')
+        if (words.length > 0) {
+          // Use days-since-epoch so the word rotates daily across the full word list
+          const dayIdx = Math.floor(Date.now() / 86400000)
+          setWotd(words[dayIdx % words.length]!)
+        }
       } catch {
-        setProgress({ level: 'B1', streak: 0, words_due: 0, total_words: 0, mastery_score: 0 })
+        setProgress({ level: 'B1', streak: 0, words_due: 0, total_words: 0, mastery_score: 0, total_xp: 0 })
       } finally { setLoading(false) }
     }
     load()
@@ -58,18 +69,24 @@ export function DashboardScreen() {
     </SafeAreaView>
   )
 
-  const ACTIVITY = [
-    { icon: <Icons.CheckCircle size={16} color={C.success} />, bg: 'rgba(22,163,74,.1)', title: 'Grammar — Dativ completed', sub: 'Scored 90% · 12 questions', time: '2h ago' },
-    { icon: <Icons.MessageSquare size={16} color={C.primary} />, bg: 'rgba(55,48,163,.1)', title: 'AI Chat — Café ordering', sub: '8 min · 3 corrections', time: '5h ago' },
-    { icon: <Icons.BookOpen size={16} color={C.accentD} />, bg: 'rgba(245,158,11,.1)', title: 'Vocab — 45 cards reviewed', sub: '92% retention · 8 new words', time: 'Yesterday' },
-  ]
+  function activityIcon(type: string) {
+    if (type === 'writing') return <Icons.PenLine size={16} color={C.primary} />
+    if (type === 'review') return <Icons.BookOpen size={16} color={C.accentD} />
+    if (type === 'grammar') return <Icons.Sparkles size={16} color="#7C3AED" />
+    return <Icons.CheckCircle size={16} color={C.success} />
+  }
+  function activityBg(type: string) {
+    if (type === 'writing') return 'rgba(55,48,163,.1)'
+    if (type === 'review') return 'rgba(245,158,11,.1)'
+    if (type === 'grammar') return 'rgba(124,58,237,.1)'
+    return 'rgba(22,163,74,.1)'
+  }
 
   const planCards = [
-    { icon: <Icons.Layers size={18} color={C.primary} />, bg: 'rgba(55,48,163,.1)', title: 'Vocab Review', sub: `${progress?.words_due ?? 32} cards due`, fill: 0, fillColor: C.primary, onPress: () => navigation.navigate('Review') },
-    { icon: <Icons.MessageSquare size={18} color={C.success} />, bg: 'rgba(22,163,74,.1)', title: 'Conversation', sub: '10 min goal', fill: 0.4, fillColor: C.success, onPress: undefined },
-    { icon: <Icons.Pencil size={18} color={C.accentD} />, bg: 'rgba(245,158,11,.1)', title: 'Grammar', sub: 'Konjunktiv II', fill: 1, fillColor: C.accent, onPress: () => navigation.navigate('Grammar') },
-    { icon: <Icons.BookOpen size={18} color={C.primary} />, bg: 'rgba(55,48,163,.1)', title: 'Reading', sub: '1 article', fill: 1, fillColor: C.primary, onPress: undefined },
-    { icon: <Icons.Volume size={18} color={C.error} />, bg: 'rgba(220,38,38,.08)', title: 'Pronunciation', sub: '5 exercises', fill: 1, fillColor: C.error, onPress: undefined },
+    { icon: <Icons.Layers size={18} color={C.primary} />, bg: 'rgba(55,48,163,.1)', title: 'Vocab Review', sub: `${progress?.words_due ?? 0} cards due`, fill: 0, fillColor: C.primary, onPress: () => navigation.navigate('Review') },
+    { icon: <Icons.MessageSquare size={18} color={C.success} />, bg: 'rgba(22,163,74,.1)', title: 'Conversation', sub: 'Practice German', fill: 0, fillColor: C.success, onPress: () => navigation.navigate('Chat') },
+    { icon: <Icons.Pencil size={18} color={C.accentD} />, bg: 'rgba(245,158,11,.1)', title: 'Grammar', sub: 'Grammar exercises', fill: 0, fillColor: C.accent, onPress: () => navigation.navigate('Grammar') },
+    { icon: <Icons.BookOpen size={18} color={C.primary} />, bg: 'rgba(55,48,163,.1)', title: 'Reading', sub: 'Immersive reading', fill: 0, fillColor: C.primary, onPress: () => navigation.navigate('Read') },
   ]
 
   return (
@@ -80,12 +97,12 @@ export function DashboardScreen() {
           <View style={s.heroCircle1} />
           <View style={s.heroCircle2} />
           <Text style={[s.heroGreeting, { color: 'rgba(255,255,255,.7)' }]}>{greeting}</Text>
-          <Text style={[s.heroName, { color: '#FFFFFF' }]}>Jonathan 👋</Text>
+          <Text style={[s.heroName, { color: '#FFFFFF' }]}>{userName} 👋</Text>
           <View style={s.heroStats}>
             {[
-              { icon: <Icons.Flame size={18} color={C.accent} />, val: progress?.streak ?? 14, lbl: 'Day Streak' },
+              { icon: <Icons.Flame size={18} color={C.accent} />, val: progress?.streak ?? 0, lbl: 'Day Streak' },
               { icon: null, val: progress?.level ?? 'B1', lbl: 'Current Level' },
-              { icon: null, val: `${(progress?.total_words ?? 0) > 0 ? ((progress!.total_words) * 2).toLocaleString() : '—'}`, lbl: 'XP Total' },
+              { icon: null, val: (progress?.total_xp ?? 0) > 0 ? (progress!.total_xp).toLocaleString() : '0', lbl: 'XP Total' },
             ].map((stat, i) => (
               <View key={i} style={s.heroStat}>
                 <View style={s.heroStatValRow}>
@@ -125,36 +142,44 @@ export function DashboardScreen() {
         </ScrollView>
 
         {/* Word of the Day */}
-        <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: C.text }]}>Wort des Tages</Text>
-          <View style={s.chipAccent}><Text style={[s.chipAccentText, { color: C.accentD }]}>Neu</Text></View>
-        </View>
-        <View style={[s.wotd, { borderColor: 'rgba(245,158,11,.25)' }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <Icons.Star size={12} color={C.accentD} />
-            <Text style={[s.wotdLabel, { color: C.accentD }]}>Word of the Day</Text>
-          </View>
-          <Text style={[s.wotdWord, { color: C.text }]}>{WOTD.word}</Text>
-          <Text style={[s.wotdArticle, { color: C.primary }]}>{WOTD.article}</Text>
-          <Text style={[s.wotdDef, { color: C.text2 }]}>{WOTD.def}</Text>
-          <Text style={[s.wotdExample, { color: C.text3 }]}>{WOTD.example}</Text>
-        </View>
+        {wotd && (
+          <>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: C.text }]}>Wort des Tages</Text>
+              <View style={s.chipAccent}><Text style={[s.chipAccentText, { color: C.accentD }]}>Neu</Text></View>
+            </View>
+            <View style={[s.wotd, { borderColor: 'rgba(245,158,11,.25)' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Icons.Star size={12} color={C.accentD} />
+                <Text style={[s.wotdLabel, { color: C.accentD }]}>Word of the Day</Text>
+              </View>
+              <Text style={[s.wotdWord, { color: C.text }]}>{wotd.german}</Text>
+              <Text style={[s.wotdArticle, { color: C.primary }]}>{wotd.part_of_speech}</Text>
+              <Text style={[s.wotdDef, { color: C.text2 }]}>{wotd.translation}</Text>
+              {wotd.example_sentence ? (
+                <Text style={[s.wotdExample, { color: C.text3 }]}>„{wotd.example_sentence}"</Text>
+              ) : null}
+            </View>
+          </>
+        )}
 
         {/* Recent Activity */}
         <View style={[s.sectionHeader, { paddingTop: 24 }]}>
           <Text style={[s.sectionTitle, { color: C.text }]}>Recent Activity</Text>
         </View>
-        {ACTIVITY.map((item, i) => (
+        {activity.length === 0 ? (
+          <Text style={[s.emptyText, { color: C.text3 }]}>No activity yet — start a review or writing session!</Text>
+        ) : activity.map((item, i) => (
           <View key={i}>
             <View style={s.activityItem}>
-              <View style={[s.activityIcon, { backgroundColor: item.bg }]}>{item.icon}</View>
+              <View style={[s.activityIcon, { backgroundColor: activityBg(item.type) }]}>{activityIcon(item.type)}</View>
               <View style={{ flex: 1 }}>
                 <Text style={[s.activityTitle, { color: C.text }]}>{item.title}</Text>
                 <Text style={[s.activitySub, { color: C.text3 }]}>{item.sub}</Text>
               </View>
               <Text style={[s.activityTime, { color: C.text3 }]}>{item.time}</Text>
             </View>
-            {i < ACTIVITY.length - 1 && <View style={[s.divider, { backgroundColor: C.border }]} />}
+            {i < activity.length - 1 && <View style={[s.divider, { backgroundColor: C.border }]} />}
           </View>
         ))}
       </ScrollView>
@@ -208,4 +233,5 @@ const s = StyleSheet.create({
   activitySub: { fontSize: 12, fontFamily: Fonts.regular },
   activityTime: { fontSize: 12, fontFamily: Fonts.regular },
   divider: { height: 1, marginHorizontal: 20 },
+  emptyText: { paddingHorizontal: 20, paddingVertical: 12, fontSize: 14, fontFamily: Fonts.regular },
 })
