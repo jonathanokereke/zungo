@@ -3,6 +3,6 @@ builder = "nixpacks"
 buildCommand = "pnpm install --frozen-lockfile"
 
 [deploy]
-startCommand = "pnpm start"
+startCommand = "npx tsx src/index.ts"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
