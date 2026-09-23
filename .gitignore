@@ -14,3 +14,5 @@ coverage/
 .expo/
 android/
 ios/
+!apps/mobile/ios/Podfile
+!apps/mobile/ios/Podfile.properties.json
