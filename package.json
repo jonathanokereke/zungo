@@ -18,6 +18,9 @@
   },
   "packageManager": "pnpm@10.34.4",
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "browser-tabs-lock"]
+    "onlyBuiltDependencies": ["esbuild", "browser-tabs-lock"],
+    "overrides": {
+      "@types/react": "^18.3.5"
+    }
   }
 }
