@@ -50,17 +50,6 @@ target 'Zungo' do
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
 
-    # Fix: fmt library uses FMT_STRING which is incompatible with C++20
-    # consteval semantics in Xcode 16+. Pin fmt pod only to C++17.
-    # Other RN pods (FuseboxTracer) require C++20 for unordered_map::contains.
-    installer.pods_project.targets.each do |target|
-      if target.name == 'fmt'
-        target.build_configurations.each do |config|
-          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
-        end
-      end
-    end
-
     # This is necessary for Xcode 14, because it signs resource bundles by default
     # when building for devices.
     installer.target_installation_results.pod_target_installation_results
@@ -71,5 +60,15 @@ target 'Zungo' do
         end
       end
     end
+    # Fix: fmt library FMT_STRING macro is incompatible with C++20 consteval on Xcode 16+.
+    # Pin only the fmt pod to C++17; other RN pods need C++20 (unordered_map::contains).
+    installer.pods_project.targets.each do |target|
+      if target.name == 'fmt'
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        end
+      end
+    end
+
   end
 end

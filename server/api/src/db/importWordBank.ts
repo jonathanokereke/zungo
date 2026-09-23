@@ -8,6 +8,7 @@
  * - C1-C2: curated data in src/db/data/c1c2.json
  */
 
+import 'dotenv/config'
 import { db } from './index.js'
 import { word_bank } from './schema.js'
 import { sql } from 'drizzle-orm'
