@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/index'
 import { users, words, reviews, writing_sessions, grammar_sessions } from '../db/schema'
-import { eq, gte, count, and, gt } from 'drizzle-orm'
+import { eq, gte, count, and, gt, isNotNull } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 
 async function getUser(auth0Id: string) {
@@ -22,8 +22,9 @@ export async function progressRoutes(app: FastifyInstance) {
     const [masteredCount] = await db.select({ count: count() }).from(reviews)
       .where(and(eq(reviews.user_id, user.id), gt(reviews.repetition, 0)))
 
+    // Only count reviews the user has actually completed (last_reviewed_at set by SM-2 update)
     const [totalReviewCount] = await db.select({ count: count() }).from(reviews)
-      .where(and(eq(reviews.user_id, user.id)))
+      .where(and(eq(reviews.user_id, user.id), isNotNull(reviews.last_reviewed_at)))
     const [writingCount] = await db.select({ count: count() }).from(writing_sessions).where(eq(writing_sessions.user_id, user.id))
     const [grammarCount] = await db.select({ count: count() }).from(grammar_sessions).where(eq(grammar_sessions.user_id, user.id))
 
