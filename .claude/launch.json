@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Mobile (Expo)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@zungo/mobile", "start", "--", "--ios"],
+      "port": 8081
+    },
+    {
+      "name": "API",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@zungo/api", "dev"],
+      "port": 3001
+    }
+  ]
+}
