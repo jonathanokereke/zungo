@@ -6,24 +6,33 @@ import type { RouteProp } from '@react-navigation/native'
 import { useState } from 'react'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
+import {
+  BookOpenIcon,
+  LayersIcon,
+  TrendingUpIcon,
+  StarIcon,
+  TrophyIcon,
+  ZapIcon,
+  HelpCircleIcon,
+} from '../../lib/icons'
 import type { OnboardingStackParamList } from '../../navigation/OnboardingNavigator'
 
-type Nav = NativeStackNavigationProp<OnboardingStackParamList, 'LevelPicker'>
+type Nav   = NativeStackNavigationProp<OnboardingStackParamList, 'LevelPicker'>
 type Route = RouteProp<OnboardingStackParamList, 'LevelPicker'>
 
 const LEVELS = [
-  { code: 'A1', label: 'Beginner', desc: 'I know very little German', emoji: '🌱' },
-  { code: 'A2', label: 'Elementary', desc: 'I can handle simple everyday phrases', emoji: '🌿' },
-  { code: 'B1', label: 'Intermediate', desc: 'I can talk about familiar topics', emoji: '🌳' },
-  { code: 'B2', label: 'Upper Intermediate', desc: 'I understand complex texts', emoji: '🌲' },
-  { code: 'C1', label: 'Advanced', desc: 'I can express ideas fluently', emoji: '🏔️' },
-  { code: 'C2', label: 'Proficient', desc: 'Near-native fluency', emoji: '⭐' },
-  { code: 'unsure', label: "I'm not sure", desc: 'Take a quick assessment quiz', emoji: '🤔' },
+  { code: 'A1',    label: 'Beginner',          desc: 'I know very little German',          Icon: BookOpenIcon   },
+  { code: 'A2',    label: 'Elementary',         desc: 'I can handle simple everyday phrases', Icon: LayersIcon   },
+  { code: 'B1',    label: 'Intermediate',       desc: 'I can talk about familiar topics',   Icon: TrendingUpIcon },
+  { code: 'B2',    label: 'Upper Intermediate', desc: 'I understand complex texts',         Icon: StarIcon       },
+  { code: 'C1',    label: 'Advanced',           desc: 'I can express ideas fluently',       Icon: TrophyIcon     },
+  { code: 'C2',    label: 'Proficient',         desc: 'Near-native fluency',                Icon: ZapIcon        },
+  { code: 'unsure',label: "I'm not sure",       desc: 'Take a quick assessment quiz',       Icon: HelpCircleIcon },
 ]
 
 export function LevelPickerScreen() {
   const navigation = useNavigation<Nav>()
-  const route = useRoute<Route>()
+  const route      = useRoute<Route>()
   const { preferred_name } = route.params
   const { colors: C } = useTheme()
   const [selected, setSelected] = useState<string | null>(null)
@@ -51,17 +60,27 @@ export function LevelPickerScreen() {
             return (
               <TouchableOpacity
                 key={l.code}
-                style={[s.card, { borderColor: active ? C.primary : C.border, backgroundColor: active ? C.primary + '12' : C.surface }]}
+                style={[
+                  s.card,
+                  {
+                    borderColor: active ? C.primary : C.border,
+                    backgroundColor: active ? C.primary + '12' : C.surface,
+                  },
+                ]}
                 onPress={() => setSelected(l.code)}
                 activeOpacity={0.8}
               >
-                <Text style={s.emoji}>{l.emoji}</Text>
+                <View style={s.iconWrap}>
+                  <l.Icon size={22} color={active ? C.primary : C.text2} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <View style={s.cardRow}>
                     <Text style={[s.cardLabel, { color: C.text }]}>{l.label}</Text>
                     {l.code !== 'unsure' && (
                       <View style={[s.badge, { backgroundColor: active ? C.primary : C.bgAlt }]}>
-                        <Text style={[s.badgeText, { color: active ? '#FFFFFF' : C.text2 }]}>{l.code}</Text>
+                        <Text style={[s.badgeText, { color: active ? '#FFFFFF' : C.text2 }]}>
+                          {l.code}
+                        </Text>
                       </View>
                     )}
                   </View>
@@ -95,18 +114,37 @@ export function LevelPickerScreen() {
 const s = StyleSheet.create({
   container: { flex: 1 },
   scroll: { paddingHorizontal: 20, paddingTop: 32, paddingBottom: 20 },
-  title: { fontSize: 28, fontFamily: Fonts.bold, marginBottom: 8 },
+  title:    { fontSize: 28, fontFamily: Fonts.bold,    marginBottom: 8 },
   subtitle: { fontSize: 15, fontFamily: Fonts.regular, lineHeight: 22, marginBottom: 28 },
   list: { gap: 10 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 16, borderWidth: 1.5 },
-  emoji: { fontSize: 24, width: 36, textAlign: 'center' },
-  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
+  iconWrap: { width: 36, alignItems: 'center', justifyContent: 'center' },
+  cardRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
   cardLabel: { fontSize: 16, fontFamily: Fonts.semibold },
-  badge: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
+  badge:     { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
   badgeText: { fontSize: 11, fontFamily: Fonts.bold },
-  cardDesc: { fontSize: 13, fontFamily: Fonts.regular },
-  check: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  footer: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24, borderTopWidth: 1 },
-  btn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
+  cardDesc:  { fontSize: 13, fontFamily: Fonts.regular },
+  check: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
+    borderTopWidth: 1,
+  },
+  btn:     { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   btnText: { fontSize: 16, fontFamily: Fonts.semibold },
 })

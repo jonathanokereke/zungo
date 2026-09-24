@@ -9,10 +9,11 @@ import type { OnboardingStackParamList } from '../../navigation/OnboardingNaviga
 
 type Nav = NativeStackNavigationProp<OnboardingStackParamList, 'Welcome'>
 
-const NAVY      = '#12105A'
-const AMBER     = '#F59E0B'
-const INDIGO    = '#3730A3'
-const OFF_WHITE = '#F9F8F6'
+const NAVY        = '#12105A'
+const CARD_BG     = '#222166'
+const ICON_COLOR  = '#111059'
+const AMBER       = '#F59E0B'
+const OFF_WHITE   = '#F9F8F6'
 
 const FEATURES = [
   {
@@ -60,7 +61,7 @@ export function WelcomeScreen() {
         {FEATURES.map(({ Icon, title, desc }) => (
           <View key={title} style={s.card}>
             <View style={s.cardIcon}>
-              <Icon size={22} color={AMBER} />
+              <Icon size={22} color={ICON_COLOR} />
             </View>
             <View style={s.cardText}>
               <Text style={s.cardTitle}>{title}</Text>
@@ -121,10 +122,8 @@ const s = StyleSheet.create({
   // Cards
   cards: { paddingHorizontal: 20, gap: 10, flex: 1, justifyContent: 'center' },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: CARD_BG,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     paddingVertical: 14,
     paddingHorizontal: 16,
     flexDirection: 'row',
@@ -133,8 +132,8 @@ const s = StyleSheet.create({
   },
   cardIcon:  { width: 36, alignItems: 'center' },
   cardText:  { flex: 1 },
-  cardTitle: { fontSize: 14, fontFamily: Fonts.semibold, color: NAVY,      marginBottom: 3 },
-  cardDesc:  { fontSize: 12, fontFamily: Fonts.regular,  color: '#6B7280', lineHeight: 18 },
+  cardTitle: { fontSize: 14, fontFamily: Fonts.semibold, color: '#FFFFFF',               marginBottom: 3 },
+  cardDesc:  { fontSize: 12, fontFamily: Fonts.regular,  color: 'rgba(255,255,255,0.55)', lineHeight: 18 },
 
   // Input
   inputWrap: { paddingHorizontal: 20, paddingBottom: 16 },
@@ -163,7 +162,7 @@ const s = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
-    backgroundColor: AMBER,
+    backgroundColor: ICON_COLOR,
   },
-  btnText: { fontSize: 16, fontFamily: Fonts.bold, color: NAVY },
+  btnText: { fontSize: 16, fontFamily: Fonts.bold, color: '#FFFFFF' },
 })

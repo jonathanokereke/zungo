@@ -375,6 +375,50 @@ export const SearchIcon = icon(() => (
   </>
 ))
 
+export const HelpCircleIcon = icon(() => (
+  <>
+    <Circle cx="12" cy="12" r="10" />
+    <Path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+    <Line x1="12" y1="17" x2="12.01" y2="17" />
+  </>
+))
+
+export const SunriseIcon = icon(() => (
+  <>
+    <Path d="M12 2v8" />
+    <Path d="m4.93 10.93 1.41 1.41" />
+    <Path d="M2 18h2" />
+    <Path d="M20 18h2" />
+    <Path d="m19.07 10.93-1.41 1.41" />
+    <Path d="M22 22H2" />
+    <Path d="m8 6 4-4 4 4" />
+    <Path d="M16 18a4 4 0 0 0-8 0" />
+  </>
+))
+
+export const SunsetIcon = icon(() => (
+  <>
+    <Path d="M12 10V2" />
+    <Path d="m4.93 10.93 1.41 1.41" />
+    <Path d="M2 18h2" />
+    <Path d="M20 18h2" />
+    <Path d="m19.07 10.93-1.41 1.41" />
+    <Path d="M22 22H2" />
+    <Path d="m16 6-4 4-4-4" />
+    <Path d="M16 18a4 4 0 0 0-8 0" />
+  </>
+))
+
+export const CoffeeIcon = icon(() => (
+  <>
+    <Path d="M17 8h1a4 4 0 1 1 0 8h-1" />
+    <Path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+    <Line x1="6" y1="2" x2="6" y2="4" />
+    <Line x1="10" y1="2" x2="10" y2="4" />
+    <Line x1="14" y1="2" x2="14" y2="4" />
+  </>
+))
+
 // Convenience named export
 export const Icons = {
   Home: HomeIcon,
@@ -419,5 +463,9 @@ export const Icons = {
   Refresh: RefreshIcon,
   Trash: TrashIcon,
   Search: SearchIcon,
+  HelpCircle: HelpCircleIcon,
+  Sunrise: SunriseIcon,
+  Sunset: SunsetIcon,
+  Coffee: CoffeeIcon,
   FlipCard,
 }
