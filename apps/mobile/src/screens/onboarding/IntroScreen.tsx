@@ -374,7 +374,8 @@ const s = StyleSheet.create({
   // ── Shared slide footer (inside scroll area) ──
   slideFooter: {
     paddingHorizontal: 28,
-    paddingBottom: 20,
+    paddingBottom: 28,
+    marginBottom: 12,
   },
   headlineDark: {
     fontSize: 22,

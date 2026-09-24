@@ -161,7 +161,7 @@ const s = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
-    backgroundColor: ICON_COLOR,
+    backgroundColor: '#3730A3',
   },
   btnText: { fontSize: 16, fontFamily: Fonts.bold, color: '#FFFFFF' },
 })

@@ -17,6 +17,7 @@ import {
   CoffeeIcon,
   SunsetIcon,
   MoonIcon,
+  SparklesIcon,
 } from '../../lib/icons'
 import type { OnboardingStackParamList } from '../../navigation/OnboardingNavigator'
 
@@ -151,7 +152,12 @@ export function GoalScreen({ onComplete }: { onComplete: () => void }) {
         >
           {loading
             ? <ActivityIndicator color="#FFFFFF" />
-            : <Text style={s.btnText}>Start Learning 🎉</Text>
+            : (
+              <View style={s.btnInner}>
+                <SparklesIcon size={18} color="#FFFFFF" />
+                <Text style={s.btnText}>Start Learning</Text>
+              </View>
+            )
           }
         </TouchableOpacity>
       </View>
@@ -210,5 +216,6 @@ const s = StyleSheet.create({
   },
   errorText: { fontSize: 13, fontFamily: Fonts.regular, textAlign: 'center' },
   btn:       { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
+  btnInner:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
   btnText:   { fontSize: 16, fontFamily: Fonts.bold, color: '#FFFFFF' },
 })
