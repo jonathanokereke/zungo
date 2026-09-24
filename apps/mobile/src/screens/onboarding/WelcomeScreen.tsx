@@ -10,9 +10,8 @@ import type { OnboardingStackParamList } from '../../navigation/OnboardingNaviga
 type Nav = NativeStackNavigationProp<OnboardingStackParamList, 'Welcome'>
 
 const NAVY        = '#12105A'
-const CARD_BG     = '#222166'
+const CARD_BG     = '#EAECF6'
 const ICON_COLOR  = '#111059'
-const AMBER       = '#F59E0B'
 const OFF_WHITE   = '#F9F8F6'
 
 const FEATURES = [
@@ -50,7 +49,7 @@ export function WelcomeScreen() {
       {/* Header */}
       <View style={s.header}>
         <View style={s.avatar}>
-          <UserIcon size={28} color={AMBER} />
+          <UserIcon size={28} color={NAVY} />
         </View>
         <Text style={s.greeting}>Guten Tag!</Text>
         <Text style={s.headerSub}>Here's what makes Zungo different</Text>
@@ -75,7 +74,7 @@ export function WelcomeScreen() {
       <View style={s.inputWrap}>
         <Text style={s.inputLabel}>What should we call you?</Text>
         <TextInput
-          style={[s.nameInput, { borderColor: hasName ? AMBER : '#D1D5DB' }]}
+          style={[s.nameInput, { borderColor: hasName ? NAVY : '#C9CBDA' }]}
           placeholder="Your first name"
           placeholderTextColor="#9CA3AF"
           value={name}
@@ -109,9 +108,9 @@ const s = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(245,158,11,0.12)',
+    backgroundColor: 'rgba(18,16,90,0.08)',
     borderWidth: 2,
-    borderColor: AMBER,
+    borderColor: NAVY,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -132,8 +131,8 @@ const s = StyleSheet.create({
   },
   cardIcon:  { width: 36, alignItems: 'center' },
   cardText:  { flex: 1 },
-  cardTitle: { fontSize: 14, fontFamily: Fonts.semibold, color: '#FFFFFF',               marginBottom: 3 },
-  cardDesc:  { fontSize: 12, fontFamily: Fonts.regular,  color: 'rgba(255,255,255,0.55)', lineHeight: 18 },
+  cardTitle: { fontSize: 14, fontFamily: Fonts.semibold, color: NAVY,        marginBottom: 3 },
+  cardDesc:  { fontSize: 12, fontFamily: Fonts.regular,  color: '#4B5563',   lineHeight: 18 },
 
   // Input
   inputWrap: { paddingHorizontal: 20, paddingBottom: 16 },
