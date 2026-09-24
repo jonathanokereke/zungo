@@ -25,19 +25,32 @@ const OFF_WHITE = '#F9F8F6'
 
 // ── Dots ─────────────────────────────────────────────────────────────────────
 
-function Dots({ current, onDark }: { current: number; onDark: boolean }) {
+function Dots({
+  current,
+  onDark,
+  onPress,
+}: {
+  current: number
+  onDark: boolean
+  onPress: (i: number) => void
+}) {
   return (
     <View style={ds.row}>
       {[0, 1, 2].map(i => (
-        <View
+        <TouchableOpacity
           key={i}
-          style={[
-            ds.dot,
-            i === current
-              ? (onDark ? ds.activeDark : ds.activeLight)
-              : (onDark ? ds.inactiveDark : ds.inactiveLight),
-          ]}
-        />
+          onPress={() => onPress(i)}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <View
+            style={[
+              ds.dot,
+              i === current
+                ? (onDark ? ds.activeDark : ds.activeLight)
+                : (onDark ? ds.inactiveDark : ds.inactiveLight),
+            ]}
+          />
+        </TouchableOpacity>
       ))}
     </View>
   )
@@ -54,7 +67,7 @@ const ds = StyleSheet.create({
 
 // ── Slide 1 — Option A: Vocabulary focus ────────────────────────────────────
 
-function Slide1({ current }: { current: number }) {
+function Slide1({ current, onDotPress }: { current: number; onDotPress: (i: number) => void }) {
   return (
     <View style={[s.slide, { backgroundColor: NAVY }]}>
       {/* Flashcard area */}
@@ -75,7 +88,7 @@ function Slide1({ current }: { current: number }) {
 
       {/* Footer text */}
       <View style={s.slideFooter}>
-        <Dots current={current} onDark={true} />
+        <Dots current={current} onDark={true} onPress={onDotPress} />
         <Text style={s.headlineDark}>10,000+ words,{'\n'}learned at your pace</Text>
         <Text style={s.subDark}>
           Spaced repetition delivers each word at exactly the right moment — so it moves from recognition to memory.
@@ -87,7 +100,7 @@ function Slide1({ current }: { current: number }) {
 
 // ── Slide 2 — Option B: AI coach on navy ────────────────────────────────────
 
-function Slide2({ current }: { current: number }) {
+function Slide2({ current, onDotPress }: { current: number; onDotPress: (i: number) => void }) {
   return (
     <View style={[s.slide, { backgroundColor: NAVY }]}>
       {/* Chat thread */}
@@ -114,7 +127,7 @@ function Slide2({ current }: { current: number }) {
 
       {/* Footer text */}
       <View style={s.slideFooter}>
-        <Dots current={current} onDark={true} />
+        <Dots current={current} onDark={true} onPress={onDotPress} />
         <Text style={s.headlineDark}>Write in German.{'\n'}Get coached, not just corrected.</Text>
         <Text style={s.subDark}>
           Our AI explains every mistake so you understand the rule, not just the fix.
@@ -128,7 +141,7 @@ function Slide2({ current }: { current: number }) {
 
 const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 
-function Slide3({ current }: { current: number }) {
+function Slide3({ current, onDotPress }: { current: number; onDotPress: (i: number) => void }) {
   return (
     <View style={[s.slide, { backgroundColor: NAVY }]}>
       <View style={s.s3Body}>
@@ -157,7 +170,7 @@ function Slide3({ current }: { current: number }) {
 
       {/* Footer text */}
       <View style={s.slideFooter}>
-        <Dots current={current} onDark={true} />
+        <Dots current={current} onDark={true} onPress={onDotPress} />
         <Text style={s.headlineDark}>Read real German{'\n'}from day one.</Text>
         <Text style={s.subDark}>
           Graded texts at your level with instant word lookups — immersion without the overwhelm.
@@ -174,11 +187,14 @@ export function IntroScreen() {
   const scrollRef  = useRef<ScrollView>(null)
   const [current, setCurrent] = useState(0)
 
+  function goTo(i: number) {
+    scrollRef.current?.scrollTo({ x: i * W, animated: true })
+    setCurrent(i)
+  }
+
   function advance() {
     if (current < 2) {
-      const next = current + 1
-      scrollRef.current?.scrollTo({ x: next * W, animated: true })
-      setCurrent(next)
+      goTo(current + 1)
     } else {
       navigation.navigate('Welcome')
     }
@@ -205,9 +221,9 @@ export function IntroScreen() {
         onMomentumScrollEnd={onScroll}
         scrollEventThrottle={16}
       >
-        <Slide1 current={current} />
-        <Slide2 current={current} />
-        <Slide3 current={current} />
+        <Slide1 current={current} onDotPress={goTo} />
+        <Slide2 current={current} onDotPress={goTo} />
+        <Slide3 current={current} onDotPress={goTo} />
       </ScrollView>
 
       <View style={[s.btnRow, { backgroundColor: safeBg }]}>
@@ -374,8 +390,8 @@ const s = StyleSheet.create({
   // ── Shared slide footer (inside scroll area) ──
   slideFooter: {
     paddingHorizontal: 28,
-    paddingBottom: 28,
-    marginBottom: 12,
+    paddingBottom: 36,
+    marginBottom: 24,
   },
   headlineDark: {
     fontSize: 22,
