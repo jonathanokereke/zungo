@@ -124,13 +124,13 @@ function Slide2({ current }: { current: number }) {
   )
 }
 
-// ── Slide 3 — Option D: Reading immersion on off-white ───────────────────────
+// ── Slide 3 — Option D: Reading immersion — navy theme ──────────────────────
 
 const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 
 function Slide3({ current }: { current: number }) {
   return (
-    <View style={[s.slide, { backgroundColor: OFF_WHITE }]}>
+    <View style={[s.slide, { backgroundColor: NAVY }]}>
       <View style={s.s3Body}>
         <Text style={s.s3Eyebrow}>TAGESTEXT · B2</Text>
         <View style={s.articleCard}>
@@ -138,10 +138,12 @@ function Slide3({ current }: { current: number }) {
           <Text style={s.articleBody}>
             {'Die '}
             <Text style={s.wordHl}>Gletscher</Text>
+            <Text style={s.tooltip}> glacier </Text>
             {' schmelzen schneller als je zuvor. Wissenschaftler sind '}
             <Text style={s.wordHl}>besorgt</Text>
             {' über die Folgen für den Tourismus und die '}
-            <Text style={s.wordHl}>Wasserversorgung</Text>.
+            <Text style={s.wordHl}>Wasserversorgung</Text>
+            {'.\n'}
           </Text>
           <View style={s.levelRow}>
             {CEFR_LEVELS.map(lvl => (
@@ -155,9 +157,9 @@ function Slide3({ current }: { current: number }) {
 
       {/* Footer text */}
       <View style={s.slideFooter}>
-        <Dots current={current} onDark={false} />
-        <Text style={s.headlineLight}>Read real German{'\n'}from day one.</Text>
-        <Text style={s.subLight}>
+        <Dots current={current} onDark={true} />
+        <Text style={s.headlineDark}>Read real German{'\n'}from day one.</Text>
+        <Text style={s.subDark}>
           Graded texts at your level with instant word lookups — immersion without the overwhelm.
         </Text>
       </View>
@@ -187,11 +189,11 @@ export function IntroScreen() {
     setCurrent(page)
   }
 
-  const isLast   = current === 2
-  // Slide 3 is off-white — use navy button. Slides 1 & 2 are navy — use amber button.
-  const btnBg    = current === 2 ? NAVY : AMBER
-  const btnColor = current === 2 ? '#FFFFFF' : NAVY
-  const safeBg   = current === 2 ? OFF_WHITE : NAVY
+  const isLast = current === 2
+  // All slides are navy — amber button works on all of them
+  const btnBg    = AMBER
+  const btnColor = NAVY
+  const safeBg   = NAVY
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: safeBg }]}>
@@ -309,61 +311,64 @@ const s = StyleSheet.create({
   bubbleHighlight: { fontFamily: Fonts.bold, color: '#D97706', textDecorationLine: 'underline' },
   bubbleItalic:    { fontFamily: Fonts.italic, color: '#374151' },
 
-  // ── Slide 3: Reading ──
+  // ── Slide 3: Reading (navy, matches Option D mockup exactly) ──
   s3Body: {
     flex: 1,
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   s3Eyebrow: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: Fonts.bold,
     color: AMBER,
     letterSpacing: 1.2,
-    marginBottom: 12,
-    alignSelf: 'flex-start',
+    marginBottom: 10,
   },
   articleCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     width: '100%',
   },
   articleTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: Fonts.bold,
-    color: NAVY,
-    marginBottom: 10,
+    color: '#FFFFFF',
+    marginBottom: 8,
   },
   articleBody: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: Fonts.regular,
-    color: '#374151',
-    lineHeight: 24,
+    color: 'rgba(255,255,255,0.65)',
+    lineHeight: 22,
   },
   wordHl: {
-    backgroundColor: 'rgba(245,158,11,0.25)',
-    color: '#B45309',
+    backgroundColor: 'rgba(245,158,11,0.35)',
+    color: AMBER,
     fontFamily: Fonts.semibold,
+  },
+  tooltip: {
+    backgroundColor: AMBER,
+    color: NAVY,
+    fontSize: 10,
+    fontFamily: Fonts.bold,
   },
   levelRow: {
     flexDirection: 'row',
     gap: 6,
-    marginTop: 14,
+    marginTop: 12,
     flexWrap: 'wrap',
   },
   levelChip: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(55,48,163,0.6)',
     borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  levelChipActive:     { backgroundColor: NAVY },
-  levelChipText:       { fontSize: 11, fontFamily: Fonts.medium, color: '#6B7280' },
+  levelChipActive:     { backgroundColor: INDIGO },
+  levelChipText:       { fontSize: 10, fontFamily: Fonts.medium, color: 'rgba(255,255,255,0.7)' },
   levelChipTextActive: { color: '#FFFFFF', fontFamily: Fonts.bold },
 
   // ── Shared slide footer (inside scroll area) ──

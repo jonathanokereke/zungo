@@ -4,13 +4,15 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Fonts } from '../../lib/theme'
-import { useTheme } from '../../lib/ThemeContext'
 import { LayersIcon, PenLineIcon, BarChart2Icon, UserIcon } from '../../lib/icons'
 import type { OnboardingStackParamList } from '../../navigation/OnboardingNavigator'
 
 type Nav = NativeStackNavigationProp<OnboardingStackParamList, 'Welcome'>
 
-const NAVY = '#12105A'
+const NAVY      = '#12105A'
+const AMBER     = '#F59E0B'
+const INDIGO    = '#3730A3'
+const OFF_WHITE = '#F9F8F6'
 
 const FEATURES = [
   {
@@ -32,7 +34,6 @@ const FEATURES = [
 
 export function WelcomeScreen() {
   const navigation = useNavigation<Nav>()
-  const { colors: C } = useTheme()
   const [name, setName] = useState('')
 
   function proceed() {
@@ -41,15 +42,14 @@ export function WelcomeScreen() {
     navigation.navigate('LevelPicker', { preferred_name: trimmed })
   }
 
-  return (
-    <SafeAreaView style={[s.container, { backgroundColor: C.primaryD }]}>
-      <View style={s.circle1} />
-      <View style={s.circle2} />
+  const hasName = name.trim().length > 0
 
+  return (
+    <SafeAreaView style={s.container}>
       {/* Header */}
       <View style={s.header}>
-        <View style={[s.avatar, { borderColor: C.accent }]}>
-          <UserIcon size={28} color={C.accent} />
+        <View style={s.avatar}>
+          <UserIcon size={28} color={AMBER} />
         </View>
         <Text style={s.greeting}>Guten Tag!</Text>
         <Text style={s.headerSub}>Here's what makes Zungo different</Text>
@@ -60,7 +60,7 @@ export function WelcomeScreen() {
         {FEATURES.map(({ Icon, title, desc }) => (
           <View key={title} style={s.card}>
             <View style={s.cardIcon}>
-              <Icon size={22} color={C.accent} />
+              <Icon size={22} color={AMBER} />
             </View>
             <View style={s.cardText}>
               <Text style={s.cardTitle}>{title}</Text>
@@ -74,16 +74,9 @@ export function WelcomeScreen() {
       <View style={s.inputWrap}>
         <Text style={s.inputLabel}>What should we call you?</Text>
         <TextInput
-          style={[
-            s.nameInput,
-            {
-              backgroundColor: 'rgba(255,255,255,.1)',
-              color: '#FFFFFF',
-              borderColor: name.trim() ? C.accent : 'rgba(255,255,255,.2)',
-            },
-          ]}
+          style={[s.nameInput, { borderColor: hasName ? AMBER : '#D1D5DB' }]}
           placeholder="Your first name"
-          placeholderTextColor="rgba(255,255,255,.35)"
+          placeholderTextColor="#9CA3AF"
           value={name}
           onChangeText={setName}
           autoCapitalize="words"
@@ -95,13 +88,7 @@ export function WelcomeScreen() {
       {/* CTA */}
       <View style={s.footer}>
         <TouchableOpacity
-          style={[
-            s.btn,
-            {
-              backgroundColor: C.accent,
-              opacity: name.trim() ? 1 : 0.5,
-            },
-          ]}
+          style={[s.btn, { opacity: hasName ? 1 : 0.45 }]}
           onPress={proceed}
           activeOpacity={0.85}
         >
@@ -113,25 +100,7 @@ export function WelcomeScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1 },
-  circle1: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: 'rgba(255,255,255,.03)',
-    top: -60,
-    right: -80,
-  },
-  circle2: {
-    position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(245,158,11,.06)',
-    bottom: 80,
-    left: -50,
-  },
+  container: { flex: 1, backgroundColor: OFF_WHITE },
 
   // Header
   header: { alignItems: 'center', paddingTop: 32, paddingBottom: 20, paddingHorizontal: 28 },
@@ -139,48 +108,53 @@ const s = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(245,158,11,.15)',
+    backgroundColor: 'rgba(245,158,11,0.12)',
     borderWidth: 2,
+    borderColor: AMBER,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
-  greeting: { fontSize: 26, fontFamily: Fonts.bold, color: '#FFFFFF', marginBottom: 4 },
-  headerSub: { fontSize: 14, fontFamily: Fonts.regular, color: 'rgba(255,255,255,.5)' },
+  greeting:  { fontSize: 26, fontFamily: Fonts.bold,    color: NAVY,      marginBottom: 4 },
+  headerSub: { fontSize: 14, fontFamily: Fonts.regular, color: '#6B7280' },
 
   // Cards
   cards: { paddingHorizontal: 20, gap: 10, flex: 1, justifyContent: 'center' },
   card: {
-    backgroundColor: 'rgba(255,255,255,.07)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     paddingVertical: 14,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
   },
-  cardIcon: { width: 36, alignItems: 'center' },
-  cardText: { flex: 1 },
-  cardTitle: { fontSize: 14, fontFamily: Fonts.semibold, color: '#FFFFFF', marginBottom: 3 },
-  cardDesc: { fontSize: 12, fontFamily: Fonts.regular, color: 'rgba(255,255,255,.5)', lineHeight: 18 },
+  cardIcon:  { width: 36, alignItems: 'center' },
+  cardText:  { flex: 1 },
+  cardTitle: { fontSize: 14, fontFamily: Fonts.semibold, color: NAVY,      marginBottom: 3 },
+  cardDesc:  { fontSize: 12, fontFamily: Fonts.regular,  color: '#6B7280', lineHeight: 18 },
 
   // Input
   inputWrap: { paddingHorizontal: 20, paddingBottom: 16 },
   inputLabel: {
     fontSize: 12,
     fontFamily: Fonts.semibold,
-    color: 'rgba(255,255,255,.4)',
-    letterSpacing: 0.8,
+    color: '#6B7280',
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
     marginBottom: 8,
   },
   nameInput: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1.5,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
     fontFamily: Fonts.regular,
+    color: NAVY,
   },
 
   // Footer
@@ -189,6 +163,7 @@ const s = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
+    backgroundColor: AMBER,
   },
   btnText: { fontSize: 16, fontFamily: Fonts.bold, color: NAVY },
 })
