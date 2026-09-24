@@ -10,6 +10,8 @@ import type { OnboardingStackParamList } from '../../navigation/OnboardingNaviga
 
 type Nav = NativeStackNavigationProp<OnboardingStackParamList, 'Welcome'>
 
+const NAVY = '#12105A'
+
 const FEATURES = [
   {
     Icon: LayersIcon,
@@ -96,8 +98,7 @@ export function WelcomeScreen() {
           style={[
             s.btn,
             {
-              backgroundColor: C.primary,
-              borderColor: C.accent,
+              backgroundColor: C.accent,
               opacity: name.trim() ? 1 : 0.5,
             },
           ]}
@@ -186,9 +187,8 @@ const s = StyleSheet.create({
   footer: { paddingHorizontal: 20, paddingBottom: 20 },
   btn: {
     borderRadius: 14,
-    borderWidth: 1.5,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  btnText: { fontSize: 16, fontFamily: Fonts.bold, color: '#FFFFFF' },
+  btnText: { fontSize: 16, fontFamily: Fonts.bold, color: NAVY },
 })
