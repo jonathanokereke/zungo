@@ -10,6 +10,7 @@ import type { OnboardingStackParamList } from '../../navigation/OnboardingNaviga
 type Nav = NativeStackNavigationProp<OnboardingStackParamList, 'Welcome'>
 
 const NAVY        = '#12105A'
+const AMBER       = '#F59E0B'
 const CARD_BG     = '#EAECF6'
 const ICON_COLOR  = '#111059'
 const OFF_WHITE   = '#F9F8F6'
