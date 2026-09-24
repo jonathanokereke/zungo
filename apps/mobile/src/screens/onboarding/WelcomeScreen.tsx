@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Fonts } from '../../lib/theme'
-import { LayersIcon, PenLineIcon, BarChart2Icon, UserIcon } from '../../lib/icons'
+import { LayersIcon, PenLineIcon, BarChart2Icon } from '../../lib/icons'
 import type { OnboardingStackParamList } from '../../navigation/OnboardingNavigator'
 
 type Nav = NativeStackNavigationProp<OnboardingStackParamList, 'Welcome'>
@@ -48,10 +48,10 @@ export function WelcomeScreen() {
     <SafeAreaView style={s.container}>
       {/* Header */}
       <View style={s.header}>
-        <View style={s.avatar}>
-          <UserIcon size={28} color={NAVY} />
+        <View style={s.logoMark}>
+          <Text style={s.logoZ}>Z</Text>
         </View>
-        <Text style={s.greeting}>Guten Tag!</Text>
+        <Text style={s.logoName}>Zungo</Text>
         <Text style={s.headerSub}>Here's what makes Zungo different</Text>
       </View>
 
@@ -104,18 +104,17 @@ const s = StyleSheet.create({
 
   // Header
   header: { alignItems: 'center', paddingTop: 32, paddingBottom: 20, paddingHorizontal: 28 },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(18,16,90,0.08)',
-    borderWidth: 2,
-    borderColor: NAVY,
+  logoMark: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: NAVY,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  greeting:  { fontSize: 26, fontFamily: Fonts.bold,    color: NAVY,      marginBottom: 4 },
+  logoZ:     { fontSize: 36, fontFamily: Fonts.bold, color: AMBER, fontStyle: 'italic' },
+  logoName:  { fontSize: 26, fontFamily: Fonts.bold, color: NAVY, letterSpacing: -0.5, marginBottom: 4 },
   headerSub: { fontSize: 14, fontFamily: Fonts.regular, color: '#6B7280' },
 
   // Cards
