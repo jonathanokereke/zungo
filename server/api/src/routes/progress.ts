@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/index'
-import { users, words, reviews, writing_sessions, grammar_sessions } from '../db/schema'
-import { eq, gte, count, and, gt, isNotNull } from 'drizzle-orm'
+import { users, words, reviews, writing_sessions, grammar_sessions, reading_sessions } from '../db/schema'
+import { eq, gte, count, and, gt, isNotNull, sql } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 
 async function getUser(auth0Id: string) {
@@ -55,6 +55,122 @@ export async function progressRoutes(app: FastifyInstance) {
         retention_rate_30d: retentionRate,
         reviews_30d: reviewedCount,
       },
+    })
+  })
+
+  // GET /api/progress/details — enriched data for the enhanced dashboard
+  app.get('/api/progress/details', { preHandler: verifyAuth }, async (request, reply) => {
+    const jwt = request.user as Auth0JwtPayload
+    const user = await getUser(jwt.sub)
+    if (!user) return reply.code(404).send({ error: { code: 'not_found', message: 'User not found' } })
+
+    const now = Date.now()
+    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000)
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000)
+
+    // ── 1. Activity heatmap — last 30 days ────────────────────────────────────
+    // Count events per calendar day across all activity types
+    const [writingDays, reviewDays, grammarDays, readingDays] = await Promise.all([
+      db.select({
+        day: sql<string>`to_char(${writing_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+        cnt: count(),
+      }).from(writing_sessions)
+        .where(and(eq(writing_sessions.user_id, user.id), gte(writing_sessions.created_at, thirtyDaysAgo)))
+        .groupBy(sql`to_char(${writing_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`),
+
+      db.select({
+        day: sql<string>`to_char(${reviews.last_reviewed_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+        cnt: count(),
+      }).from(reviews)
+        .where(and(eq(reviews.user_id, user.id), gte(reviews.last_reviewed_at, thirtyDaysAgo)))
+        .groupBy(sql`to_char(${reviews.last_reviewed_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`),
+
+      db.select({
+        day: sql<string>`to_char(${grammar_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+        cnt: count(),
+      }).from(grammar_sessions)
+        .where(and(eq(grammar_sessions.user_id, user.id), gte(grammar_sessions.created_at, thirtyDaysAgo)))
+        .groupBy(sql`to_char(${grammar_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`),
+
+      db.select({
+        day: sql<string>`to_char(${reading_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+        cnt: count(),
+      }).from(reading_sessions)
+        .where(and(eq(reading_sessions.user_id, user.id), gte(reading_sessions.created_at, thirtyDaysAgo)))
+        .groupBy(sql`to_char(${reading_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`),
+    ])
+
+    const activityMap = new Map<string, number>()
+    for (const { day, cnt } of [...writingDays, ...reviewDays, ...grammarDays, ...readingDays]) {
+      activityMap.set(day, (activityMap.get(day) ?? 0) + Number(cnt))
+    }
+
+    const activity_30d: { date: string; count: number }[] = []
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now - i * 86_400_000)
+      const dateStr = d.toISOString().split('T')[0]!
+      activity_30d.push({ date: dateStr, count: activityMap.get(dateStr) ?? 0 })
+    }
+
+    // ── 2. Weekly XP per day (last 7 days) ───────────────────────────────────
+    const xpMap = new Map<string, number>()
+    for (const { day, cnt } of writingDays.filter(r => r.day >= sevenDaysAgo.toISOString().split('T')[0]!)) {
+      xpMap.set(day, (xpMap.get(day) ?? 0) + Number(cnt) * 50)
+    }
+    for (const { day, cnt } of reviewDays.filter(r => r.day >= sevenDaysAgo.toISOString().split('T')[0]!)) {
+      xpMap.set(day, (xpMap.get(day) ?? 0) + Number(cnt) * 10)
+    }
+    for (const { day, cnt } of grammarDays.filter(r => r.day >= sevenDaysAgo.toISOString().split('T')[0]!)) {
+      xpMap.set(day, (xpMap.get(day) ?? 0) + Number(cnt) * 20)
+    }
+
+    const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const weekly_xp: { date: string; day_label: string; xp: number }[] = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now - i * 86_400_000)
+      const dateStr = d.toISOString().split('T')[0]!
+      weekly_xp.push({
+        date: dateStr,
+        day_label: i === 0 ? 'Today' : DAYS[d.getDay()]!,
+        xp: xpMap.get(dateStr) ?? 0,
+      })
+    }
+
+    // ── 3. Reading stats ──────────────────────────────────────────────────────
+    const allReadingSessions = await db.select().from(reading_sessions).where(eq(reading_sessions.user_id, user.id))
+    const reading_stats = {
+      total_sessions: allReadingSessions.length,
+      total_words_looked_up: allReadingSessions.reduce((s, r) => s + r.words_looked_up, 0),
+      total_minutes: Math.round(allReadingSessions.reduce((s, r) => s + r.duration_seconds, 0) / 60),
+    }
+
+    // ── 4. Weak grammar topics (avg score < 70%, min 1 session) ──────────────
+    const allGrammarSessions = await db.select().from(grammar_sessions).where(eq(grammar_sessions.user_id, user.id))
+    const topicMap = new Map<string, { total_pct: number; count: number }>()
+    for (const g of allGrammarSessions) {
+      const existing = topicMap.get(g.topic) ?? { total_pct: 0, count: 0 }
+      topicMap.set(g.topic, { total_pct: existing.total_pct + g.pct, count: existing.count + 1 })
+    }
+    const weak_grammar_topics = [...topicMap.entries()]
+      .map(([topic, { total_pct, count }]) => ({ topic, avg_pct: Math.round(total_pct / count), sessions: count }))
+      .filter(t => t.avg_pct < 70)
+      .sort((a, b) => a.avg_pct - b.avg_pct)
+      .slice(0, 5)
+
+    // ── 5. Writing level breakdown ────────────────────────────────────────────
+    const allWritingSessions = await db.select({ feedback_json: writing_sessions.feedback_json })
+      .from(writing_sessions).where(eq(writing_sessions.user_id, user.id))
+
+    const writing_stats = { total: allWritingSessions.length, above_level: 0, at_level: 0, below_level: 0 }
+    for (const s of allWritingSessions) {
+      const assessment = (s.feedback_json as any)?.level_assessment
+      if (assessment === 'above_level') writing_stats.above_level++
+      else if (assessment === 'at_level') writing_stats.at_level++
+      else if (assessment === 'below_level') writing_stats.below_level++
+    }
+
+    return reply.send({
+      data: { weekly_xp, activity_30d, reading_stats, weak_grammar_topics, writing_stats },
     })
   })
 
