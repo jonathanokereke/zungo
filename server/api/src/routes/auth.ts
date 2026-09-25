@@ -1,8 +1,16 @@
 import { FastifyInstance } from 'fastify'
+import { z } from 'zod'
 import { db } from '../db/index'
 import { users } from '../db/schema'
 import { eq, sql } from 'drizzle-orm'
 import { verifyAuth, extractAuth0Email, extractAuth0Name, type Auth0JwtPayload } from '../lib/auth0'
+
+const EditProfileSchema = z.object({
+  preferred_name: z.string().min(1).max(50).optional(),
+  email: z.string().email().optional(),
+}).refine(d => d.preferred_name !== undefined || d.email !== undefined, {
+  message: 'At least one field required',
+})
 
 export async function authRoutes(app: FastifyInstance) {
   // Auto-creates user on first login; updates email/name on subsequent logins
@@ -37,6 +45,22 @@ export async function authRoutes(app: FastifyInstance) {
       })
       .where(eq(users.auth0_id, jwt.sub))
     return reply.send({ data: { ok: true } })
+  })
+
+  // User-editable profile fields (preferred name, email)
+  app.patch('/api/users/me/profile', { preHandler: verifyAuth }, async (request, reply) => {
+    const jwt = request.user as Auth0JwtPayload
+    const body = EditProfileSchema.safeParse(request.body)
+    if (!body.success) {
+      return reply.code(400).send({ error: { code: 'validation_error', message: body.error.message } })
+    }
+    const [updated] = await db
+      .update(users)
+      .set({ ...body.data })
+      .where(eq(users.auth0_id, jwt.sub))
+      .returning()
+    if (!updated) return reply.code(404).send({ error: { code: 'not_found', message: 'User not found' } })
+    return reply.send({ data: updated })
   })
 
   app.patch('/api/users/preferences', { preHandler: verifyAuth }, async (request, reply) => {

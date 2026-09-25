@@ -29,6 +29,13 @@
       "when": 1789976192746,
       "tag": "0003_sudden_forge",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790321837214,
+      "tag": "0004_jittery_shockwave",
+      "breakpoints": true
     }
   ]
 }

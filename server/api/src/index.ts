@@ -21,8 +21,10 @@ import { chatRoutes } from './routes/chat'
 import { grammarRoutes } from './routes/grammar'
 import { activityRoutes } from './routes/activity'
 import { readingRoutes } from './routes/reading'
+import { readingSessionRoutes } from './routes/readingSessions'
 import { chatSessionRoutes } from './routes/chatSessions'
 import { onboardingRoutes } from './routes/onboarding'
+import { pushRoutes } from './routes/push'
 import { seedSystemData } from './db/seed'
 
 const app = Fastify({ logger: env.NODE_ENV === 'development' })
@@ -49,8 +51,10 @@ await chatRoutes(app)
 await grammarRoutes(app)
 await activityRoutes(app)
 await readingRoutes(app)
+await readingSessionRoutes(app)
 await chatSessionRoutes(app)
 await onboardingRoutes(app)
+await pushRoutes(app)
 
 app.get('/health', async () => ({ status: 'ok' }))
 

@@ -1,4 +1,5 @@
 import { useAuth0 } from 'react-native-auth0'
+import { apiFetch } from './api'
 
 export type AuthUser = {
   sub: string
@@ -23,6 +24,10 @@ export function useAuth() {
   }
 
   async function logout() {
+    // Best-effort: remove push token from server before clearing session
+    if (_cachedAccessToken) {
+      apiFetch('/api/push/token', { method: 'DELETE' }, _cachedAccessToken).catch(() => {})
+    }
     _cachedAccessToken = null
     await clearSession()
   }

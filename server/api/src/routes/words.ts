@@ -82,6 +82,23 @@ export async function wordRoutes(app: FastifyInstance) {
     return reply.code(200).send({ data: { deleted: true } })
   })
 
+  // Returns a deterministic word of the day — stable for the calendar date per user
+  app.get('/api/words/wotd', { preHandler: verifyAuth }, async (request, reply) => {
+    const jwt = request.user as Auth0JwtPayload
+    const user = await getUser(jwt.sub)
+    if (!user) return reply.code(404).send({ error: { code: 'not_found', message: 'User not found' } })
+
+    const allWords = await db.select().from(words)
+      .where(eq(words.user_id, user.id))
+      .orderBy(words.created_at)
+
+    if (!allWords.length) return reply.send({ data: null })
+
+    const dayIndex = Math.floor(Date.now() / 86_400_000)
+    const word = allWords[dayIndex % allWords.length]!
+    return reply.send({ data: word })
+  })
+
   app.get('/api/words/lookup', { preHandler: verifyAuth }, async (request, reply) => {
     const query = request.query as { word?: string; context?: string }
     if (!query.word) {

@@ -12,6 +12,7 @@ export const users = pgTable('users', {
   streak: integer('streak').notNull().default(0),
   last_active: timestamp('last_active', { withTimezone: true }),
   preferences_json: jsonb('preferences_json'),
+  push_token: text('push_token'),
   created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -91,5 +92,16 @@ export const grammar_sessions = pgTable('grammar_sessions', {
   score: integer('score').notNull(),
   total: integer('total').notNull(),
   pct: integer('pct').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const reading_sessions = pgTable('reading_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  level: cefrLevelEnum('level').notNull(),
+  topic: text('topic').notNull(),
+  words_looked_up: integer('words_looked_up').notNull().default(0),
+  duration_seconds: integer('duration_seconds').notNull().default(0),
   created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })

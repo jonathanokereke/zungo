@@ -31,12 +31,12 @@ export function DashboardScreen() {
     async function load() {
       try {
         const token = await getAccessToken()
-        const [prog, due, acts, me, words] = await Promise.all([
+        const [prog, due, acts, me, wotdResp] = await Promise.all([
           apiFetch<ProgressResp>('/api/progress', {}, token),
           apiFetch<unknown[]>('/api/reviews/due', {}, token),
           apiFetch<ActivityItem[]>('/api/activity', {}, token).catch(() => [] as ActivityItem[]),
           apiFetch<UserMe>('/api/users/me', {}, token).catch(() => ({ email: '', level: 'B1' }) as UserMe),
-          apiFetch<WordItem[]>('/api/words?limit=100', {}, token).catch(() => [] as WordItem[]),
+          apiFetch<WordItem | null>('/api/words/wotd', {}, token).catch(() => null),
         ])
         setProgress({
           level: prog.user.level,
@@ -48,11 +48,7 @@ export function DashboardScreen() {
         })
         setActivity(acts)
         setUserName(me.preferred_name || me.name || me.email.split('@')[0] || 'Learner')
-        if (words.length > 0) {
-          // Use days-since-epoch so the word rotates daily across the full word list
-          const dayIdx = Math.floor(Date.now() / 86400000)
-          setWotd(words[dayIdx % words.length]!)
-        }
+        if (wotdResp) setWotd(wotdResp)
       } catch {
         setProgress({ level: 'B1', streak: 0, words_due: 0, total_words: 0, mastery_score: 0, total_xp: 0 })
       } finally { setLoading(false) }

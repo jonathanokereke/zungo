@@ -1,4 +1,6 @@
 import * as Notifications from 'expo-notifications'
+import * as Device from 'expo-device'
+import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 
 Notifications.setNotificationHandler({
@@ -41,4 +43,37 @@ export async function requestPermissionsAndScheduleReminder(hour = 19, minute = 
 
 export async function cancelDailyReminder(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync()
+}
+
+/**
+ * Registers for Expo push notifications and returns the push token string,
+ * or null when running on a simulator/emulator or permissions are denied.
+ */
+export async function registerForPushNotificationsAsync(): Promise<string | null> {
+  if (Platform.OS === 'web') return null
+  if (!Device.isDevice) return null  // simulators cannot receive push notifications
+
+  const { status: existing } = await Notifications.getPermissionsAsync()
+  const status = existing === 'granted'
+    ? existing
+    : (await Notifications.requestPermissionsAsync()).status
+
+  if (status !== 'granted') return null
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+    })
+  }
+
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId
+  if (!projectId) return null
+
+  try {
+    const { data } = await Notifications.getExpoPushTokenAsync({ projectId })
+    return data
+  } catch {
+    return null
+  }
 }

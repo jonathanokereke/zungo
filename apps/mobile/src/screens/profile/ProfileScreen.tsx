@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native'
+import { Alert, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../lib/useAuth'
@@ -21,6 +21,13 @@ export function ProfileScreen() {
   const [userPrefs, setUserPrefs] = useState<Prefs>({})
   const [dailyReminder, setDailyReminder] = useState(true)
 
+  // Edit profile modal state
+  const [editVisible, setEditVisible] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
   useEffect(() => {
     async function load() {
       try {
@@ -37,6 +44,34 @@ export function ProfileScreen() {
     load()
   }, [])
 
+  function openEditProfile() {
+    setEditName(serverUser?.preferred_name || serverUser?.name || '')
+    setEditEmail(serverUser?.email || '')
+    setEditError(null)
+    setEditVisible(true)
+  }
+
+  async function saveProfile() {
+    const trimmedName = editName.trim()
+    const trimmedEmail = editEmail.trim()
+    if (!trimmedName) { setEditError('Name is required'); return }
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      const token = await getAccessToken()
+      const updated = await apiFetch<UserMe>('/api/users/me/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ preferred_name: trimmedName, email: trimmedEmail || undefined }),
+      }, token)
+      setServerUser(prev => prev ? { ...prev, ...updated } : prev)
+      setEditVisible(false)
+    } catch (e: any) {
+      setEditError(e?.message ?? 'Failed to save')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   async function savePrefs(updates: Partial<Prefs>) {
     try {
       const token = await getAccessToken()
@@ -51,6 +86,7 @@ export function ProfileScreen() {
       }
     } catch {}
   }
+
   const [autoCorrect, setAutoCorrect] = useState(true)
   const [offlineMode, setOfflineMode] = useState(false)
 
@@ -84,6 +120,7 @@ export function ProfileScreen() {
     {
       title: 'Account',
       rows: [
+        { icon: <Icons.User size={16} color={C.primary} />, iconBg: 'rgba(55,48,163,.12)', label: 'Edit Profile', chevron: true, onPress: openEditProfile },
         { icon: <Icons.LogOut size={16} color={C.error} />, iconBg: 'rgba(220,38,38,.1)', label: 'Sign Out', danger: true, onPress: logout },
       ],
     },
@@ -145,6 +182,50 @@ export function ProfileScreen() {
 
         <Text style={[pf.version, { color: C.text3 }]}>Zungo v1.0.0 · Made with ♥ for German learners</Text>
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <Modal visible={editVisible} transparent animationType="slide" onRequestClose={() => setEditVisible(false)}>
+        <TouchableOpacity style={pf.modalOverlay} activeOpacity={1} onPress={() => setEditVisible(false)}>
+          <View style={[pf.sheet, { backgroundColor: C.surface }]} onStartShouldSetResponder={() => true}>
+            <View style={[pf.sheetHandle, { backgroundColor: C.border }]} />
+            <Text style={[pf.sheetTitle, { color: C.text }]}>Edit Profile</Text>
+
+            <Text style={[pf.fieldLabel, { color: C.text3 }]}>Display name</Text>
+            <TextInput
+              style={[pf.fieldInput, { color: C.text, borderColor: C.border, backgroundColor: C.bg }]}
+              value={editName}
+              onChangeText={v => { setEditName(v); setEditError(null) }}
+              placeholder="Your name"
+              placeholderTextColor={C.text3}
+              autoCapitalize="words"
+              returnKeyType="next"
+            />
+
+            <Text style={[pf.fieldLabel, { color: C.text3 }]}>Email</Text>
+            <TextInput
+              style={[pf.fieldInput, { color: C.text, borderColor: C.border, backgroundColor: C.bg }]}
+              value={editEmail}
+              onChangeText={v => { setEditEmail(v); setEditError(null) }}
+              placeholder="your@email.com"
+              placeholderTextColor={C.text3}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              returnKeyType="done"
+              onSubmitEditing={saveProfile}
+            />
+
+            {editError && <Text style={[pf.fieldError, { color: C.error }]}>{editError}</Text>}
+
+            <TouchableOpacity
+              style={[pf.sheetSaveBtn, { backgroundColor: C.primary, opacity: editSaving ? 0.6 : 1 }]}
+              onPress={saveProfile}
+              disabled={editSaving}
+            >
+              <Text style={pf.sheetSaveBtnText}>{editSaving ? 'Saving…' : 'Save'}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -169,4 +250,14 @@ const pf = StyleSheet.create({
   rowValue: { fontSize: 14, fontFamily: Fonts.regular },
   divider: { height: 1, marginLeft: 60 },
   version: { textAlign: 'center', fontSize: 12, padding: 24, fontFamily: Fonts.regular },
+  // Edit profile modal
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,.45)' },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  sheetTitle: { fontSize: 20, fontFamily: Fonts.bold, marginBottom: 20 },
+  fieldLabel: { fontSize: 12, fontFamily: Fonts.semibold, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 },
+  fieldInput: { borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: Fonts.regular, marginBottom: 16 },
+  fieldError: { fontSize: 13, fontFamily: Fonts.regular, marginBottom: 12 },
+  sheetSaveBtn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
+  sheetSaveBtnText: { fontSize: 16, fontFamily: Fonts.bold, color: '#FFFFFF' },
 })

@@ -10,7 +10,7 @@ import { Auth0Provider } from 'react-native-auth0'
 import { RootNavigator } from './src/navigation/RootNavigator'
 import { OnboardingNavigator } from './src/navigation/OnboardingNavigator'
 import { ThemeProvider, useTheme } from './src/lib/ThemeContext'
-import { requestPermissionsAndScheduleReminder } from './src/lib/notifications'
+import { requestPermissionsAndScheduleReminder, registerForPushNotificationsAsync } from './src/lib/notifications'
 import { apiFetch } from './src/lib/api'
 import { useAuth } from './src/lib/useAuth'
 import { LoginScreen } from './src/screens/auth/LoginScreen'
@@ -75,6 +75,15 @@ function AppShell() {
         const prefs = me.preferences_json
         if (prefs?.onboarding_complete) {
           await requestPermissionsAndScheduleReminder(prefs.reminder_hour ?? 19, prefs.reminder_minute ?? 0)
+          // Register Expo push token and store server-side (non-blocking)
+          registerForPushNotificationsAsync().then(pushToken => {
+            if (pushToken) {
+              apiFetch('/api/push/token', {
+                method: 'POST',
+                body: JSON.stringify({ token: pushToken }),
+              }, token).catch(() => {})
+            }
+          }).catch(() => {})
           setOnboardingDone(true)
         } else {
           setOnboardingDone(false)

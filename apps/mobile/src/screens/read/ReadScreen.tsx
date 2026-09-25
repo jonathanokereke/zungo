@@ -19,6 +19,7 @@ interface WordInfo {
 
 interface SampleText { title: string; level: string; topic: string; text: string }
 interface TextsResp { texts: SampleText[]; level: string }
+type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
 
 function tokenize(text: string): string[] {
   return text.split(/(\s+|[.,!?;:()\[\]"„"–—])/).filter(Boolean)
@@ -36,6 +37,8 @@ export function ReadScreen() {
   const [textsLoading, setTextsLoading] = useState(true)
   const [tokens, setTokens] = useState<string[]>([])
   const [sourceText, setSourceText] = useState('')
+  const [activeText, setActiveText] = useState<SampleText | null>(null)
+  const [sessionStart, setSessionStart] = useState<number>(0)
   const [inputText, setInputText] = useState('')
   const [savedWords, setSavedWords] = useState<Set<string>>(new Set())
   const [loadingWord, setLoadingWord] = useState<string | null>(null)
@@ -59,11 +62,31 @@ export function ReadScreen() {
     fetchTexts()
   }, [])
 
-  function loadText(text: string) {
+  function loadText(text: string, meta?: SampleText) {
     setSourceText(text)
     setTokens(tokenize(text))
+    setActiveText(meta ?? null)
+    setSessionStart(Date.now())
     setPopover(null)
     setError(null)
+    setSavedWords(new Set())
+  }
+
+  async function finishSession(wordsLookedUp: number) {
+    if (!activeText) return
+    try {
+      const token = await getAccessToken()
+      await apiFetch('/api/reading/sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: activeText.title,
+          level: activeText.level as CefrLevel,
+          topic: activeText.topic,
+          words_looked_up: wordsLookedUp,
+          duration_seconds: Math.floor((Date.now() - sessionStart) / 1000),
+        }),
+      }, token)
+    } catch { /* non-fatal */ }
   }
 
   async function handleWordTap(word: string) {
@@ -121,7 +144,7 @@ export function ReadScreen() {
             <TouchableOpacity
               key={i}
               style={[rd.sampleCard, { backgroundColor: C.surface, borderColor: C.border }]}
-              onPress={() => loadText(s.text)}
+              onPress={() => loadText(s.text, s)}
             >
               <View style={rd.sampleCardHeader}>
                 <Text style={[rd.sampleTitle, { color: C.text }]}>{s.title}</Text>
@@ -172,7 +195,13 @@ export function ReadScreen() {
         <View style={rd.toolbar}>
           <TouchableOpacity
             style={[rd.toolbarBtn, { backgroundColor: C.bgAlt }]}
-            onPress={() => { setTokens([]); setPopover(null); setSavedWords(new Set()) }}
+            onPress={() => {
+              finishSession(savedWords.size)
+              setTokens([])
+              setPopover(null)
+              setSavedWords(new Set())
+              setActiveText(null)
+            }}
           >
             <Icons.ArrowLeft size={16} color={C.text2} />
             <Text style={[rd.toolbarBtnText, { color: C.text2 }]}>Back</Text>
