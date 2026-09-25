@@ -97,7 +97,7 @@ export function GrammarScreen() {
           <TouchableOpacity
             key={i}
             style={[gm.topicCard, { backgroundColor: C.surface }]}
-            onPress={() => navigation.navigate('Exercise', { topic: topic.title, subtitle: topic.subtitle })}
+            onPress={() => navigation.navigate('GrammarRef', { topic: topic.title, subtitle: topic.subtitle, color: topic.color })}
             activeOpacity={0.82}
           >
             <View style={gm.topicBody}>

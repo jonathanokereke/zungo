@@ -8,6 +8,7 @@ import { ReadScreen } from '../screens/read/ReadScreen'
 import { VocabularyScreen } from '../screens/vocabulary/VocabularyScreen'
 import { ShadowScreen } from '../screens/shadow/ShadowScreen'
 import { DecksScreen } from '../screens/decks/DecksScreen'
+import { GrammarRefScreen } from '../screens/grammar/GrammarRefScreen'
 import { LightColors as C } from '../lib/ThemeContext'
 
 export type RootStackParamList = {
@@ -20,6 +21,7 @@ export type RootStackParamList = {
   Vocabulary: { pos?: string } | undefined
   Shadow: undefined
   Decks: undefined
+  GrammarRef: { topic: string; subtitle: string; color: string }
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -108,6 +110,13 @@ export function RootNavigator() {
       <Stack.Screen
         name="Decks"
         component={DecksScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="GrammarRef"
+        component={GrammarRefScreen}
         options={{
           headerShown: false,
         }}
