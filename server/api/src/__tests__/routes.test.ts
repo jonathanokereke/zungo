@@ -550,6 +550,7 @@ describe('POST /api/reading/sessions', () => {
   it('saves a reading session and returns 201', async () => {
     vi.mocked(db.select).mockReturnValueOnce(chainReturning([fakeUser]) as never)
     vi.mocked(db.insert).mockReturnValue(chainReturning([fakeSession]) as never)
+    vi.mocked(db.update).mockReturnValue(chainReturning([]) as never)
 
     const res = await app.inject({
       method: 'POST', url: '/api/reading/sessions',

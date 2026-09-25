@@ -1,5 +1,5 @@
 import { Animated, StyleSheet, Text, useAnimatedValue } from 'react-native'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Fonts } from '../lib/theme'
 import { useTheme } from '../lib/ThemeContext'
 
@@ -11,16 +11,20 @@ interface Props {
 export function OfflineBanner({ isOnline, queueLength = 0 }: Props) {
   const { colors: C } = useTheme()
   const opacity = useAnimatedValue(isOnline ? 0 : 1)
+  const [visible, setVisible] = useState(!isOnline || queueLength > 0)
 
   useEffect(() => {
-    Animated.timing(opacity, {
-      toValue: isOnline ? 0 : 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start()
-  }, [isOnline])
+    if (!isOnline || queueLength > 0) {
+      setVisible(true)
+      Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }).start()
+    } else {
+      Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(
+        () => setVisible(false)
+      )
+    }
+  }, [isOnline, queueLength])
 
-  if (isOnline && queueLength === 0) return null
+  if (!visible) return null
 
   return (
     <Animated.View
