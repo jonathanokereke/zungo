@@ -4,6 +4,7 @@ import { users, articles, listening_sessions } from '../db/schema'
 import { eq, and, inArray, desc } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 import { anthropic } from '../lib/anthropic'
+import { updateStreak } from '../lib/updateStreak'
 
 const LEVEL_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const
 type Level = typeof LEVEL_ORDER[number]
@@ -163,6 +164,8 @@ Return only valid JSON, no extra text.`
       total: body.total,
       pct,
     }).returning()
+
+    await updateStreak(user)
 
     return reply.code(201).send({ data: session })
   })

@@ -5,6 +5,7 @@ import { eq, sql } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 import { streamWritingCorrection } from '../lib/anthropic'
 import { SubmitWritingSchema, WritingFeedbackSchema } from '@zungo/core'
+import { updateStreak } from '../lib/updateStreak'
 
 async function getUser(auth0Id: string) {
   const result = await db.select().from(users).where(eq(users.auth0_id, auth0Id)).limit(1)
@@ -73,6 +74,7 @@ export async function writingRoutes(app: FastifyInstance) {
         feedback_json: feedback,
         level: user.level,
       })
+      await updateStreak(user)
     } catch {
       // Log but don't fail the stream response
     }

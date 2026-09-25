@@ -4,6 +4,7 @@ import { db } from '../db/index'
 import { users, reading_sessions } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
+import { updateStreak } from '../lib/updateStreak'
 
 async function getUser(auth0Id: string) {
   const result = await db.select().from(users).where(eq(users.auth0_id, auth0Id)).limit(1)
@@ -33,6 +34,8 @@ export async function readingSessionRoutes(app: FastifyInstance) {
       .insert(reading_sessions)
       .values({ user_id: user.id, ...body.data })
       .returning()
+
+    await updateStreak(user)
 
     return reply.code(201).send({ data: session })
   })

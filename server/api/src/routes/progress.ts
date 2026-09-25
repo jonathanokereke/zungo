@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/index'
-import { users, words, reviews, writing_sessions, grammar_sessions, reading_sessions } from '../db/schema'
+import { users, words, reviews, writing_sessions, grammar_sessions, reading_sessions, listening_sessions } from '../db/schema'
 import { eq, gte, count, and, gt, isNotNull, sql } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 
@@ -70,7 +70,7 @@ export async function progressRoutes(app: FastifyInstance) {
 
     // ── 1. Activity heatmap — last 30 days ────────────────────────────────────
     // Count events per calendar day across all activity types
-    const [writingDays, reviewDays, grammarDays, readingDays] = await Promise.all([
+    const [writingDays, reviewDays, grammarDays, readingDays, listeningDays] = await Promise.all([
       db.select({
         day: sql<string>`to_char(${writing_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
         cnt: count(),
@@ -98,10 +98,17 @@ export async function progressRoutes(app: FastifyInstance) {
       }).from(reading_sessions)
         .where(and(eq(reading_sessions.user_id, user.id), gte(reading_sessions.created_at, thirtyDaysAgo)))
         .groupBy(sql`to_char(${reading_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`),
+
+      db.select({
+        day: sql<string>`to_char(${listening_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+        cnt: count(),
+      }).from(listening_sessions)
+        .where(and(eq(listening_sessions.user_id, user.id), gte(listening_sessions.created_at, thirtyDaysAgo)))
+        .groupBy(sql`to_char(${listening_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`),
     ])
 
     const activityMap = new Map<string, number>()
-    for (const { day, cnt } of [...writingDays, ...reviewDays, ...grammarDays, ...readingDays]) {
+    for (const { day, cnt } of [...writingDays, ...reviewDays, ...grammarDays, ...readingDays, ...listeningDays]) {
       activityMap.set(day, (activityMap.get(day) ?? 0) + Number(cnt))
     }
 
@@ -113,15 +120,19 @@ export async function progressRoutes(app: FastifyInstance) {
     }
 
     // ── 2. Weekly XP per day (last 7 days) ───────────────────────────────────
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0]!
     const xpMap = new Map<string, number>()
-    for (const { day, cnt } of writingDays.filter(r => r.day >= sevenDaysAgo.toISOString().split('T')[0]!)) {
-      xpMap.set(day, (xpMap.get(day) ?? 0) + Number(cnt) * 50)
-    }
-    for (const { day, cnt } of reviewDays.filter(r => r.day >= sevenDaysAgo.toISOString().split('T')[0]!)) {
-      xpMap.set(day, (xpMap.get(day) ?? 0) + Number(cnt) * 10)
-    }
-    for (const { day, cnt } of grammarDays.filter(r => r.day >= sevenDaysAgo.toISOString().split('T')[0]!)) {
-      xpMap.set(day, (xpMap.get(day) ?? 0) + Number(cnt) * 20)
+    const xpSources: [{ day: string; cnt: string | number }[], number][] = [
+      [writingDays,   50],
+      [reviewDays,    10],
+      [grammarDays,   20],
+      [readingDays,   30],
+      [listeningDays, 25],
+    ]
+    for (const [rows, perUnit] of xpSources) {
+      for (const { day, cnt } of rows.filter(r => r.day >= sevenDaysAgoStr)) {
+        xpMap.set(day, (xpMap.get(day) ?? 0) + Number(cnt) * perUnit)
+      }
     }
 
     const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
