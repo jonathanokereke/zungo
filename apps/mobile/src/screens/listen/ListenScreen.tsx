@@ -10,6 +10,8 @@ import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
+import { useNetwork } from '../../lib/NetworkContext'
+import { OfflineNotice } from '../../components/OfflineNotice'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Track {
@@ -41,6 +43,7 @@ const ACCENT = '#6366F1'
 // ── Component ─────────────────────────────────────────────────────────────────
 export function ListenScreen() {
   const { colors: C } = useTheme()
+  const { isOnline } = useNetwork()
   const { getAccessToken } = useAuth()
 
   // Picker state
@@ -228,6 +231,8 @@ export function ListenScreen() {
               Pick a track, listen in German, then answer comprehension questions.
             </Text>
           </View>
+
+          {!isOnline && <OfflineNotice message="Listening requires an internet connection to load tracks and generate questions." />}
 
           {/* Level filter */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={ls.filterRow}>

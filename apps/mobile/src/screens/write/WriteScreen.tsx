@@ -12,6 +12,8 @@ import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
 import type { RootStackParamList } from '../../navigation/RootNavigator'
+import { useNetwork } from '../../lib/NetworkContext'
+import { OfflineNotice } from '../../components/OfflineNotice'
 
 interface Prompt { prompt: string; level: string }
 interface Correction { original: string; corrected: string; explanation: string; rule: string }
@@ -26,6 +28,7 @@ const MIN_CHARS = 50
 
 export function WriteScreen() {
   const { colors: C } = useTheme()
+  const { isOnline } = useNetwork()
   const { getAccessToken } = useAuth()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const scrollRef = useRef<ScrollView>(null)
@@ -141,6 +144,8 @@ export function WriteScreen() {
               <Text style={[wr.chatBtnText, { color: C.primary }]}>Chat</Text>
             </TouchableOpacity>
           </View>
+
+          {!isOnline && <OfflineNotice message="AI writing correction requires an internet connection." />}
 
           {/* Prompt card */}
           {promptLoading ? (

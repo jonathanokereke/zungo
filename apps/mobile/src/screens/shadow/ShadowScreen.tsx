@@ -10,6 +10,8 @@ import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
+import { useNetwork } from '../../lib/NetworkContext'
+import { OfflineNotice } from '../../components/OfflineNotice'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ArticleSummary {
@@ -55,6 +57,7 @@ const LEVEL_COLORS: Record<string, { bg: string; text: string }> = {
 // ── Component ─────────────────────────────────────────────────────────────────
 export function ShadowScreen() {
   const { colors: C } = useTheme()
+  const { isOnline } = useNetwork()
   const { getAccessToken } = useAuth()
 
   // Picker state
@@ -371,6 +374,9 @@ export function ShadowScreen() {
           <Text style={[sh.pickerSubtitle, { color: C.text3 }]}>
             Hear native-speed German, then repeat each sentence to train your ear and pronunciation.
           </Text>
+
+          {!isOnline && <OfflineNotice message="Shadowing requires an internet connection to load articles." />}
+
           {/* Paste own text */}
           <TouchableOpacity
             style={[sh.pasteBtn, { backgroundColor: C.surface, borderColor: C.border }]}

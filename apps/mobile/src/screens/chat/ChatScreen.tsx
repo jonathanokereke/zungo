@@ -6,6 +6,8 @@ import { Fonts } from '../../lib/theme'
 import { Icons } from '../../lib/icons'
 import { API_BASE, apiFetch } from '../../lib/api'
 import { useAuth } from '../../lib/useAuth'
+import { useNetwork } from '../../lib/NetworkContext'
+import { OfflineNotice } from '../../components/OfflineNotice'
 
 const SCENARIOS = [
   { label: 'Beim Bäcker', emoji: '🏪' },
@@ -43,6 +45,7 @@ function parseCorrections(text: string): { clean: string; corrections: Correctio
 
 export function ChatScreen() {
   const { colors: C } = useTheme()
+  const { isOnline } = useNetwork()
   const { getAccessToken } = useAuth()
   const [activeScenario, setActiveScenario] = useState(0)
   const [messages, setMessages] = useState<Message[]>([])
@@ -192,6 +195,8 @@ export function ChatScreen() {
   return (
     <SafeAreaView style={[ms.container, { backgroundColor: C.bg }]} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+
+        {!isOnline && <OfflineNotice message="Chat requires an internet connection. You'll be able to send messages once you're back online." />}
 
         {/* Scenario tabs */}
         <View style={[ms.scenarioBar, { borderBottomColor: C.border, backgroundColor: C.surface }]}>
