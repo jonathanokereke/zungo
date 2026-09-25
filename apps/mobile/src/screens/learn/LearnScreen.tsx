@@ -175,6 +175,22 @@ export function LearnScreen() {
           )
         })()}
 
+        {/* Pre-built vocabulary decks */}
+        <TouchableOpacity
+          style={[sc.decksCard, { backgroundColor: C.surface, borderColor: C.border }]}
+          onPress={() => navigation.navigate('Decks')}
+          activeOpacity={0.8}
+        >
+          <View style={[sc.decksIconWrap, { backgroundColor: 'rgba(55,48,163,.1)' }]}>
+            <Icons.Layers size={20} color={C.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[sc.decksTitle, { color: C.text }]}>Vocabulary Decks</Text>
+            <Text style={[sc.decksSub, { color: C.text3 }]}>Import curated word sets by topic and level</Text>
+          </View>
+          <Icons.ChevronRight size={18} color={C.text3} />
+        </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   )
@@ -208,4 +224,8 @@ const sc = StyleSheet.create({
   topicIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   topicName: { fontSize: 12, fontFamily: Fonts.semibold, textAlign: 'center' },
   topicCount: { fontSize: 11, marginTop: 2, fontFamily: Fonts.regular },
+  decksCard: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: 20, marginTop: 16, borderRadius: 16, borderWidth: 1, padding: 16 },
+  decksIconWrap: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  decksTitle: { fontSize: 15, fontFamily: Fonts.semibold, marginBottom: 2 },
+  decksSub: { fontSize: 12, fontFamily: Fonts.regular },
 })

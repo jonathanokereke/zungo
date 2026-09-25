@@ -454,6 +454,17 @@ export const RepeatIcon = icon(() => (
   </>
 ))
 
+export const CheckIcon = icon(() => (
+  <Path d="M20 6 9 17l-5-5" />
+))
+
+export const PlusIcon = icon(() => (
+  <>
+    <Path d="M5 12h14" />
+    <Path d="M12 5v14" />
+  </>
+))
+
 // Convenience named export
 export const Icons = {
   Home: HomeIcon,
@@ -508,5 +519,7 @@ export const Icons = {
   RotateCcw: RotateCcwIcon,
   Headphones: HeadphonesIcon,
   Repeat: RepeatIcon,
+  Check: CheckIcon,
+  Plus: PlusIcon,
   FlipCard,
 }

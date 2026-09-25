@@ -43,6 +43,13 @@
       "when": 1790324479960,
       "tag": "0005_stormy_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790326672586,
+      "tag": "0006_hard_exodus",
+      "breakpoints": true
     }
   ]
 }

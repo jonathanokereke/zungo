@@ -116,3 +116,30 @@ export const articles = pgTable('articles', {
   estimated_minutes: integer('estimated_minutes').notNull().default(1),
   created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const vocab_decks = pgTable('vocab_decks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  level: cefrLevelEnum('level').notNull(),
+  topic: text('topic').notNull(),
+  word_count: integer('word_count').notNull().default(0),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const vocab_deck_words = pgTable('vocab_deck_words', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  deck_id: uuid('deck_id').notNull().references(() => vocab_decks.id, { onDelete: 'cascade' }),
+  german: text('german').notNull(),
+  translation: text('translation').notNull(),
+  part_of_speech: text('part_of_speech').notNull(),
+  example_sentence: text('example_sentence'),
+  sort_order: integer('sort_order').notNull().default(0),
+})
+
+export const user_deck_imports = pgTable('user_deck_imports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  deck_id: uuid('deck_id').notNull().references(() => vocab_decks.id, { onDelete: 'cascade' }),
+  imported_at: timestamp('imported_at', { withTimezone: true }).notNull().defaultNow(),
+})
