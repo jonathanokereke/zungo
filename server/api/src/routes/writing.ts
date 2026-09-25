@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/index'
 import { users, writing_sessions, writing_prompts } from '../db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { eq, sql, desc } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 import { streamWritingCorrection } from '../lib/anthropic'
 import { SubmitWritingSchema, WritingFeedbackSchema } from '@zungo/core'
@@ -81,5 +81,29 @@ export async function writingRoutes(app: FastifyInstance) {
 
     reply.raw.write('data: [DONE]\n\n')
     reply.raw.end()
+  })
+
+  // GET /api/writing/sessions — last 20 writing sessions for the user
+  app.get('/api/writing/sessions', { preHandler: verifyAuth }, async (request, reply) => {
+    const jwt = request.user as Auth0JwtPayload
+    const user = await getUser(jwt.sub)
+    if (!user) return reply.code(404).send({ error: { code: 'not_found', message: 'User not found' } })
+
+    const sessions = await db
+      .select({
+        id: writing_sessions.id,
+        prompt: writing_sessions.prompt,
+        user_text: writing_sessions.user_text,
+        corrected_text: writing_sessions.corrected_text,
+        feedback_json: writing_sessions.feedback_json,
+        level: writing_sessions.level,
+        created_at: writing_sessions.created_at,
+      })
+      .from(writing_sessions)
+      .where(eq(writing_sessions.user_id, user.id))
+      .orderBy(desc(writing_sessions.created_at))
+      .limit(20)
+
+    return reply.send({ data: sessions })
   })
 }

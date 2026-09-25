@@ -78,11 +78,26 @@ export async function chatRoutes(app: FastifyInstance) {
     const scenario = query.scenario ?? 'Beim Bäcker'
 
     const OPENINGS: Record<string, string> = {
-      'Beim Bäcker': 'Guten Morgen! Willkommen in unserer Bäckerei. Was darf es für Sie sein? 🥐',
-      'Beim Arzt': 'Guten Tag! Was kann ich für Sie tun? Wo haben Sie Beschwerden? 🏥',
-      'Am Bahnhof': 'Guten Tag! Wie kann ich Ihnen helfen? Wohin möchten Sie reisen? 🚆',
+      'Beim Bäcker':          'Guten Morgen! Willkommen in unserer Bäckerei. Was darf es für Sie sein? 🥐',
+      'Beim Arzt':            'Guten Tag! Was kann ich für Sie tun? Wo haben Sie Beschwerden? 🏥',
+      'Am Bahnhof':           'Guten Tag! Wie kann ich Ihnen helfen? Wohin möchten Sie reisen? 🚆',
       'Vorstellungsgespräch': 'Guten Morgen! Schön, Sie kennenzulernen. Erzählen Sie uns bitte etwas über sich. 💼',
-      'Smalltalk': 'Hallo! Schönes Wetter heute, oder? Wie geht es Ihnen? 🤝',
+      'Smalltalk':            'Hallo! Schönes Wetter heute, oder? Wie geht es Ihnen? 🤝',
+      'Im Restaurant':        'Guten Abend! Haben Sie reserviert, oder suchen Sie einen Tisch? 🍽️',
+      'Beim Einkaufen':       'Guten Tag! Kann ich Ihnen helfen? Suchen Sie etwas Bestimmtes? 🛒',
+      'Im Hotel':             'Willkommen im Hotel Zentrum! Haben Sie eine Reservierung? 🏨',
+      'Am Flughafen':         'Guten Morgen! Ihren Reisepass und Ihr Ticket bitte. Wohin geht die Reise? ✈️',
+      'Auf der Bank':         'Guten Tag! Was kann ich für Sie tun? Haben Sie ein Konto bei uns? 🏦',
+      'Beim Friseur':         'Hallo! Schön, dass Sie da sind. Was kann ich heute für Sie tun? ✂️',
+      'Im Fitnessstudio':     'Willkommen! Sind Sie Mitglied oder möchten Sie eine Probestunde? 💪',
+      'Wohnungssuche':        'Hallo! Sie haben sich wegen der Wohnung in der Hauptstraße gemeldet, richtig? 🏠',
+      'Telefonat':            'Müller GmbH, guten Tag! Mit wem spreche ich, bitte? 📞',
+      'Beim Nachbarn':        'Oh, hallo Nachbar! Kann ich etwas für Sie tun? 🏘️',
+      'An der Uni':           'Guten Tag! Was kann ich für Sie tun? Haben Sie Fragen zur Anmeldung? 🎓',
+      'Im Supermarkt':        'Entschuldigung, suchen Sie etwas? Kann ich Ihnen helfen? 🧺',
+      'Beim Zahnarzt':        'Guten Tag! Haben Sie einen Termin? Nehmen Sie bitte Platz. 🦷',
+      'Am Amt':               'Guten Morgen! Bitte zeigen Sie mir Ihren Personalausweis. Um was geht es? 📋',
+      'Café-Gespräch':        'Hey! Ist hier noch frei? Das Café ist heute richtig voll, oder? ☕',
     }
 
     return reply.send({ data: { text: OPENINGS[scenario] ?? `Guten Tag! Willkommen. Wie kann ich Ihnen helfen?` } })

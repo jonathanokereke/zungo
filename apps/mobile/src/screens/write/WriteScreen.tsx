@@ -23,8 +23,22 @@ interface Feedback {
   overall_feedback: string
   level_assessment: 'below_level' | 'at_level' | 'above_level'
 }
+interface HistorySession {
+  id: string
+  prompt: string
+  user_text: string
+  feedback_json: Feedback | null
+  level: string
+  created_at: string
+}
 
 const MIN_CHARS = 50
+
+const LEVEL_BADGE = {
+  above_level: { label: 'Above Level', bg: 'rgba(22,163,74,.12)', color: '#16A34A' },
+  at_level:    { label: 'At Level',    bg: 'rgba(55,48,163,.12)', color: '#3730A3' },
+  below_level: { label: 'Below Level', bg: 'rgba(245,158,11,.15)', color: '#B45309' },
+} as const
 
 export function WriteScreen() {
   const { colors: C } = useTheme()
@@ -40,6 +54,18 @@ export function WriteScreen() {
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const [history, setHistory] = useState<HistorySession[]>([])
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  async function loadHistory() {
+    try {
+      const token = await getAccessToken()
+      const data = await apiFetch<HistorySession[]>('/api/writing/sessions', {}, token)
+      setHistory(data)
+    } catch {}
+  }
+
   async function loadPrompt() {
     setPromptLoading(true)
     setFeedback(null)
@@ -54,7 +80,7 @@ export function WriteScreen() {
     } finally { setPromptLoading(false) }
   }
 
-  useEffect(() => { loadPrompt() }, [])
+  useEffect(() => { loadPrompt(); loadHistory() }, [])
 
   async function submit() {
     if (text.length < MIN_CHARS) { setError(`Please write at least ${MIN_CHARS} characters.`); return }
@@ -115,11 +141,6 @@ export function WriteScreen() {
     } finally { setSubmitting(false) }
   }
 
-  const levelBadge = {
-    above_level: { label: 'Above Level', bg: 'rgba(22,163,74,.12)', color: '#16A34A' },
-    at_level:    { label: 'At Level',    bg: 'rgba(55,48,163,.12)', color: '#3730A3' },
-    below_level: { label: 'Below Level', bg: 'rgba(245,158,11,.15)', color: '#B45309' },
-  }
 
   return (
     <SafeAreaView style={[wr.container, { backgroundColor: C.bg }]} edges={['top']}>
@@ -218,7 +239,7 @@ export function WriteScreen() {
                 <View style={wr.cardHeader}>
                   <Text style={[wr.cardTitle, { color: C.text }]}>Feedback</Text>
                   {(() => {
-                    const badge = levelBadge[feedback.level_assessment]
+                    const badge = LEVEL_BADGE[feedback.level_assessment]
                     return (
                       <View style={[wr.levelBadge, { backgroundColor: badge.bg }]}>
                         <Text style={[wr.levelBadgeText, { color: badge.color }]}>{badge.label}</Text>
@@ -280,6 +301,84 @@ export function WriteScreen() {
               </View>
             </View>
           )}
+          {/* Past Sessions */}
+          {history.length > 0 && (
+            <View style={{ marginTop: 28 }}>
+              <TouchableOpacity
+                style={wr.historyToggle}
+                onPress={() => setHistoryOpen(v => !v)}
+              >
+                <Icons.Clock size={15} color={C.text2} />
+                <Text style={[wr.historyToggleText, { color: C.text2 }]}>
+                  Past Sessions ({history.length})
+                </Text>
+                <View style={{ marginLeft: 'auto' as any }}>
+                  {historyOpen
+                    ? <Icons.ChevronLeft size={14} color={C.text3} />
+                    : <Icons.ChevronRight size={14} color={C.text3} />}
+                </View>
+              </TouchableOpacity>
+
+              {historyOpen && (
+                <View style={{ gap: 12, marginTop: 10 }}>
+                  {history.map(s => {
+                    const expanded = expandedId === s.id
+                    const fb = s.feedback_json
+                    const badge = fb ? LEVEL_BADGE[fb.level_assessment] : null
+                    const date = new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                    return (
+                      <TouchableOpacity
+                        key={s.id}
+                        style={[wr.historyCard, { backgroundColor: C.surface, borderColor: C.border }]}
+                        onPress={() => setExpandedId(expanded ? null : s.id)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={wr.historyCardHeader}>
+                          <Text style={[wr.historyPrompt, { color: C.text }]} numberOfLines={expanded ? undefined : 2}>
+                            {s.prompt}
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                            <Text style={[wr.historyDate, { color: C.text3 }]}>{date}</Text>
+                            {badge && (
+                              <View style={[wr.levelBadge, { backgroundColor: badge.bg }]}>
+                                <Text style={[wr.levelBadgeText, { color: badge.color }]}>{badge.label}</Text>
+                              </View>
+                            )}
+                            {fb && (
+                              <Text style={[wr.historyDate, { color: C.text3 }]}>
+                                {fb.corrections.length} correction{fb.corrections.length !== 1 ? 's' : ''}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+
+                        {expanded && fb && (
+                          <View style={{ marginTop: 12, gap: 10 }}>
+                            <Text style={[wr.cardBody, { color: C.text2 }]}>{fb.overall_feedback}</Text>
+                            {fb.corrections.slice(0, 3).map((c, i) => (
+                              <View key={i} style={[wr.correctionCard, { backgroundColor: C.bgAlt }]}>
+                                <View style={wr.correctionRow}>
+                                  <Text style={[wr.correctionOriginal, { color: C.error }]}>{c.original}</Text>
+                                  <Icons.ChevronRight size={12} color={C.text3} />
+                                  <Text style={[wr.correctionFixed, { color: C.success }]}>{c.corrected}</Text>
+                                </View>
+                                <Text style={[wr.correctionExplain, { color: C.text2 }]}>{c.explanation}</Text>
+                              </View>
+                            ))}
+                            {fb.corrections.length > 3 && (
+                              <Text style={[wr.historyDate, { color: C.text3 }]}>
+                                +{fb.corrections.length - 3} more correction{fb.corrections.length - 3 !== 1 ? 's' : ''}
+                              </Text>
+                            )}
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+              )}
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -325,4 +424,10 @@ const wr = StyleSheet.create({
   actionsRow: { flexDirection: 'row', gap: 10 },
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 14, paddingVertical: 14, borderWidth: 1.5 },
   actionBtnText: { fontSize: 14, fontFamily: Fonts.semibold },
+  historyToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  historyToggleText: { fontSize: 15, fontFamily: Fonts.semibold },
+  historyCard: { borderRadius: 14, padding: 14, borderWidth: 1 },
+  historyCardHeader: {},
+  historyPrompt: { fontSize: 14, fontFamily: Fonts.medium, lineHeight: 20 },
+  historyDate: { fontSize: 12, fontFamily: Fonts.regular },
 })

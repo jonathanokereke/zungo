@@ -10,11 +10,26 @@ import { useNetwork } from '../../lib/NetworkContext'
 import { OfflineNotice } from '../../components/OfflineNotice'
 
 const SCENARIOS = [
-  { label: 'Beim Bäcker', emoji: '🏪' },
-  { label: 'Beim Arzt', emoji: '🏥' },
-  { label: 'Am Bahnhof', emoji: '🚆' },
-  { label: 'Vorstellungsgespräch', emoji: '💼' },
-  { label: 'Smalltalk', emoji: '🤝' },
+  { label: 'Beim Bäcker',          emoji: '🥖', category: 'Daily Life' },
+  { label: 'Beim Arzt',            emoji: '🏥', category: 'Daily Life' },
+  { label: 'Am Bahnhof',           emoji: '🚆', category: 'Travel' },
+  { label: 'Vorstellungsgespräch', emoji: '💼', category: 'Work' },
+  { label: 'Smalltalk',            emoji: '🤝', category: 'Social' },
+  { label: 'Im Restaurant',        emoji: '🍽️', category: 'Daily Life' },
+  { label: 'Beim Einkaufen',       emoji: '🛒', category: 'Daily Life' },
+  { label: 'Im Hotel',             emoji: '🏨', category: 'Travel' },
+  { label: 'Am Flughafen',         emoji: '✈️', category: 'Travel' },
+  { label: 'Auf der Bank',         emoji: '🏦', category: 'Daily Life' },
+  { label: 'Beim Friseur',         emoji: '✂️', category: 'Daily Life' },
+  { label: 'Im Fitnessstudio',     emoji: '💪', category: 'Social' },
+  { label: 'Wohnungssuche',        emoji: '🏠', category: 'Work' },
+  { label: 'Telefonat',            emoji: '📞', category: 'Work' },
+  { label: 'Beim Nachbarn',        emoji: '🏘️', category: 'Social' },
+  { label: 'An der Uni',           emoji: '🎓', category: 'Work' },
+  { label: 'Im Supermarkt',        emoji: '🧺', category: 'Daily Life' },
+  { label: 'Beim Zahnarzt',        emoji: '🦷', category: 'Daily Life' },
+  { label: 'Am Amt',               emoji: '📋', category: 'Daily Life' },
+  { label: 'Café-Gespräch',        emoji: '☕', category: 'Social' },
 ]
 
 interface Correction { original: string; corrected: string; explanation: string }

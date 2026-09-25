@@ -5,6 +5,7 @@ const EnvSchema = z.object({
   AUTH0_DOMAIN: z.string().min(1),
   AUTH0_AUDIENCE: z.string().min(1),
   ANTHROPIC_API_KEY: z.string().min(1),
+  CRON_SECRET: z.string().default('dev-cron-secret'),
   SENTRY_DSN: z.string().optional(),
   POSTHOG_API_KEY: z.string().optional(),
   POSTHOG_HOST: z.string().optional(),
