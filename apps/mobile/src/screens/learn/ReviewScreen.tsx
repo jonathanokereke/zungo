@@ -7,6 +7,8 @@ import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
+import { useNetwork } from '../../lib/NetworkContext'
+import { useOfflineStore, type CachedDueEntry } from '../../lib/offlineStore'
 
 interface DueEntry { review: { id: string; word_id: string; interval: number; ease_factor: number; repetition: number }; word: { id: string; german: string; translation: string; example_sentence?: string } }
 interface ReviewCard { word_id: string; word: string; article?: string; definition: string; examples: string[]; interval: number; easeFactor: number; repetition: number }
@@ -48,11 +50,14 @@ export function ReviewScreen() {
   const navigation = useNavigation()
   const { getAccessToken } = useAuth()
   const { colors: C } = useTheme()
+  const { isOnline } = useNetwork()
+  const { cachedDueCards, setDueCards, enqueueReview } = useOfflineStore()
   const [cards, setCards] = useState<ReviewCard[]>([])
   const [idx, setIdx] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [done, setDone] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [usingCache, setUsingCache] = useState(false)
   const flipAnim = useRef(new Animated.Value(0)).current
 
   const currentCard = cards[idx]
@@ -68,8 +73,14 @@ export function ReviewScreen() {
       try {
         const token = await getAccessToken()
         const data = await apiFetch<DueEntry[]>('/api/reviews/due', {}, token)
+        setDueCards(data)
         if (data.length > 0) setCards(data.map(toCard))
-      } catch {}
+      } catch {
+        if (cachedDueCards.length > 0) {
+          setCards(cachedDueCards.map(toCard))
+          setUsingCache(true)
+        }
+      }
     }
     load()
   }, [])
@@ -83,10 +94,17 @@ export function ReviewScreen() {
   async function rate(rating: Rating) {
     if (submitting) return
     setSubmitting(true)
-    try {
-      const token = await getAccessToken()
-      await apiFetch(`/api/reviews/${cards[idx].word_id}`, { method: 'POST', body: JSON.stringify({ quality: rating }) }, token)
-    } catch {}
+    const wordId = cards[idx].word_id
+    if (!isOnline) {
+      enqueueReview(wordId, rating)
+    } else {
+      try {
+        const token = await getAccessToken()
+        await apiFetch(`/api/reviews/${wordId}`, { method: 'POST', body: JSON.stringify({ quality: rating }) }, token)
+      } catch {
+        enqueueReview(wordId, rating)
+      }
+    }
     setSubmitting(false)
     flipAnim.setValue(0)
     setFlipped(false)
@@ -113,6 +131,12 @@ export function ReviewScreen() {
 
   return (
     <SafeAreaView style={[rv.container, { backgroundColor: C.bg }]} edges={['bottom']}>
+      {usingCache && (
+        <View style={[rv.offlineBar, { backgroundColor: 'rgba(180,83,9,.12)' }]}>
+          <Icons.Globe size={12} color='#B45309' />
+          <Text style={[rv.offlineBarText, { color: '#B45309' }]}>Offline · ratings will sync when you reconnect</Text>
+        </View>
+      )}
       <View style={rv.header}>
         <View style={{ flex: 1, paddingHorizontal: 12 }}>
           <View style={[rv.progressTrack, { backgroundColor: C.bgAlt }]}>
@@ -215,6 +239,8 @@ const rv = StyleSheet.create({
   srsBtnInterval: { fontSize: 10, fontFamily: Fonts.regular, opacity: 0.7 },
   audioEditBtn: { paddingVertical: 8, alignItems: 'center' },
   audioEditText: { fontSize: 12, fontFamily: Fonts.regular },
+  offlineBar: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 8 },
+  offlineBarText: { fontSize: 12, fontFamily: Fonts.regular },
   doneTitle: { fontSize: 24, fontFamily: Fonts.bold, marginTop: 20, marginBottom: 10, textAlign: 'center' },
   doneSub: { fontSize: 15, marginBottom: 32, textAlign: 'center', fontFamily: Fonts.regular },
   backBtn: { borderRadius: 12, paddingHorizontal: 28, paddingVertical: 14 },

@@ -15,6 +15,9 @@ import { apiFetch } from './src/lib/api'
 import { useAuth } from './src/lib/useAuth'
 import { LoginScreen } from './src/screens/auth/LoginScreen'
 import type { RootStackParamList } from './src/navigation/RootNavigator'
+import { NetworkProvider, useNetwork } from './src/lib/NetworkContext'
+import { OfflineBanner } from './src/components/OfflineBanner'
+import { useOfflineStore } from './src/lib/offlineStore'
 
 const AUTH0_DOMAIN = process.env['EXPO_PUBLIC_AUTH0_DOMAIN'] ?? ''
 const AUTH0_CLIENT_ID = process.env['EXPO_PUBLIC_AUTH0_CLIENT_ID'] ?? ''
@@ -140,10 +143,48 @@ function AppShell() {
   }
 
   return (
+    <NetworkProvider>
+      <AuthenticatedShell isDark={isDark} getAccessToken={getAccessToken} />
+    </NetworkProvider>
+  )
+}
+
+function AuthenticatedShell({ isDark, getAccessToken }: { isDark: boolean; getAccessToken: () => Promise<string> }) {
+  const { isOnline } = useNetwork()
+  const { reviewQueue, removeFromQueue } = useOfflineStore()
+  const prevOnlineRef = useRef(false)
+
+  // Flush queued reviews when transitioning from offline -> online
+  useEffect(() => {
+    if (isOnline && !prevOnlineRef.current && reviewQueue.length > 0) {
+      ;(async () => {
+        try {
+          const token = await getAccessToken()
+          for (const item of reviewQueue) {
+            try {
+              await apiFetch(`/api/reviews/${item.word_id}`, {
+                method: 'POST',
+                body: JSON.stringify({ quality: item.quality }),
+              }, token)
+              removeFromQueue(item.word_id)
+            } catch {
+              // keep in queue on failure
+            }
+          }
+        } catch {
+          // no token yet, skip
+        }
+      })()
+    }
+    prevOnlineRef.current = isOnline
+  }, [isOnline])
+
+  return (
     <>
       <NavigationContainer ref={navigationRef}>
         <RootNavigator />
       </NavigationContainer>
+      <OfflineBanner isOnline={isOnline} queueLength={reviewQueue.length} />
       <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor="transparent" translucent />
     </>
   )
