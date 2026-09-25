@@ -105,3 +105,14 @@ export const reading_sessions = pgTable('reading_sessions', {
   duration_seconds: integer('duration_seconds').notNull().default(0),
   created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const articles = pgTable('articles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: text('title').notNull(),
+  level: cefrLevelEnum('level').notNull(),
+  topic: text('topic').notNull(),
+  text: text('text').notNull(),
+  word_count: integer('word_count').notNull().default(0),
+  estimated_minutes: integer('estimated_minutes').notNull().default(1),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})

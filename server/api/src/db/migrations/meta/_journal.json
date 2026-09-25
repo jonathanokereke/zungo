@@ -36,6 +36,13 @@
       "when": 1790321837214,
       "tag": "0004_jittery_shockwave",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790324479960,
+      "tag": "0005_stormy_synch",
+      "breakpoints": true
     }
   ]
 }
