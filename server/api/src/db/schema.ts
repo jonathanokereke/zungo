@@ -143,3 +143,13 @@ export const user_deck_imports = pgTable('user_deck_imports', {
   deck_id: uuid('deck_id').notNull().references(() => vocab_decks.id, { onDelete: 'cascade' }),
   imported_at: timestamp('imported_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const listening_sessions = pgTable('listening_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  article_id: uuid('article_id').notNull().references(() => articles.id, { onDelete: 'cascade' }),
+  score: integer('score').notNull(),
+  total: integer('total').notNull(),
+  pct: integer('pct').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})

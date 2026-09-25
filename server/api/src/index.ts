@@ -26,6 +26,7 @@ import { chatSessionRoutes } from './routes/chatSessions'
 import { onboardingRoutes } from './routes/onboarding'
 import { pushRoutes } from './routes/push'
 import { deckRoutes } from './routes/decks'
+import { listeningRoutes } from './routes/listening'
 import { seedSystemData } from './db/seed'
 
 const app = Fastify({ logger: env.NODE_ENV === 'development' })
@@ -57,6 +58,7 @@ await chatSessionRoutes(app)
 await onboardingRoutes(app)
 await pushRoutes(app)
 await deckRoutes(app)
+await listeningRoutes(app)
 
 app.get('/health', async () => ({ status: 'ok' }))
 
