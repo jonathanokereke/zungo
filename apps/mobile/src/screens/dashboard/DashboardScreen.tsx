@@ -83,6 +83,7 @@ export function DashboardScreen() {
     { icon: <Icons.MessageSquare size={18} color={C.success} />, bg: 'rgba(22,163,74,.1)', title: 'Conversation', sub: 'Practice German', fill: 0, fillColor: C.success, onPress: () => navigation.navigate('Chat') },
     { icon: <Icons.Pencil size={18} color={C.accentD} />, bg: 'rgba(245,158,11,.1)', title: 'Grammar', sub: 'Grammar exercises', fill: 0, fillColor: C.accent, onPress: () => navigation.navigate('Grammar') },
     { icon: <Icons.BookOpen size={18} color={C.primary} />, bg: 'rgba(55,48,163,.1)', title: 'Reading', sub: 'Immersive reading', fill: 0, fillColor: C.primary, onPress: () => navigation.navigate('Read') },
+    { icon: <Icons.Headphones size={18} color='#9333EA' />, bg: 'rgba(168,85,247,.1)', title: 'Shadowing', sub: 'Train pronunciation', fill: 0, fillColor: '#9333EA', onPress: () => navigation.navigate('Shadow') },
   ]
 
   return (

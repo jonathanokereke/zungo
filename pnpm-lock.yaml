@@ -68,6 +68,9 @@ importers:
       expo-router:
         specifier: ^5.1.11
         version: 5.1.11(139a3477c0db6fc0ff7d60d9431bf3aa)
+      expo-speech:
+        specifier: ^57.0.3
+        version: 57.0.3(expo@53.0.27(@babel/core@7.29.7)(@expo/metro-runtime@5.0.5(react-native@0.79.6(@babel/core@7.29.7)(@react-native-community/cli@13.6.9)(@types/react@18.3.31)(react@19.0.0)))(graphql@15.8.0)(react-native@0.79.6(@babel/core@7.29.7)(@react-native-community/cli@13.6.9)(@types/react@18.3.31)(react@19.0.0))(react@19.0.0))
       expo-status-bar:
         specifier: ~2.2.3
         version: 2.2.3(react-native@0.79.6(@babel/core@7.29.7)(@react-native-community/cli@13.6.9)(@types/react@18.3.31)(react@19.0.0))(react@19.0.0)
@@ -3612,6 +3615,11 @@ packages:
         optional: true
       react-server-dom-webpack:
         optional: true
+
+  expo-speech@57.0.3:
+    resolution: {integrity: sha512-rcO8izKziksrV4X3qQ5g+prFNTZmLYDEGEVnTvuvpOZDwjzP9nsdoaFymhY+qj9AJfMcpvR7Wshm+zpislyJBg==}
+    peerDependencies:
+      expo: '*'
 
   expo-status-bar@2.2.3:
     resolution: {integrity: sha512-+c8R3AESBoduunxTJ8353SqKAKpxL6DvcD8VKBuh81zzJyUUbfB4CVjr1GufSJEKsMzNPXZU+HJwXx7Xh7lx8Q==}
@@ -10120,6 +10128,10 @@ snapshots:
       - react
       - react-native
       - supports-color
+
+  expo-speech@57.0.3(expo@53.0.27(@babel/core@7.29.7)(@expo/metro-runtime@5.0.5(react-native@0.79.6(@babel/core@7.29.7)(@react-native-community/cli@13.6.9)(@types/react@18.3.31)(react@19.0.0)))(graphql@15.8.0)(react-native@0.79.6(@babel/core@7.29.7)(@react-native-community/cli@13.6.9)(@types/react@18.3.31)(react@19.0.0))(react@19.0.0)):
+    dependencies:
+      expo: 53.0.27(@babel/core@7.29.7)(@expo/metro-runtime@5.0.5(react-native@0.79.6(@babel/core@7.29.7)(@react-native-community/cli@13.6.9)(@types/react@18.3.31)(react@19.0.0)))(graphql@15.8.0)(react-native@0.79.6(@babel/core@7.29.7)(@react-native-community/cli@13.6.9)(@types/react@18.3.31)(react@19.0.0))(react@19.0.0)
 
   expo-status-bar@2.2.3(react-native@0.79.6(@babel/core@7.29.7)(@react-native-community/cli@13.6.9)(@types/react@18.3.31)(react@19.0.0))(react@19.0.0):
     dependencies:

@@ -27,6 +27,7 @@
     "expo-font": "~13.3.2",
     "expo-notifications": "~0.31.5",
     "expo-router": "^5.1.11",
+    "expo-speech": "^57.0.3",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
     "react-native": "0.79.6",

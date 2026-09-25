@@ -6,6 +6,7 @@ import { ExerciseScreen } from '../screens/grammar/ExerciseScreen'
 import { ChatScreen } from '../screens/chat/ChatScreen'
 import { ReadScreen } from '../screens/read/ReadScreen'
 import { VocabularyScreen } from '../screens/vocabulary/VocabularyScreen'
+import { ShadowScreen } from '../screens/shadow/ShadowScreen'
 import { LightColors as C } from '../lib/ThemeContext'
 
 export type RootStackParamList = {
@@ -16,6 +17,7 @@ export type RootStackParamList = {
   Chat: undefined
   Read: undefined
   Vocabulary: { pos?: string } | undefined
+  Shadow: undefined
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -92,6 +94,13 @@ export function RootNavigator() {
           headerStyle: { backgroundColor: C.bg },
           headerShadowVisible: false,
           headerTitleStyle: { fontWeight: '700', color: C.text },
+        }}
+      />
+      <Stack.Screen
+        name="Shadow"
+        component={ShadowScreen}
+        options={{
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

@@ -419,6 +419,41 @@ export const CoffeeIcon = icon(() => (
   </>
 ))
 
+export const PlayIcon = icon(() => (
+  <Polygon points="5 3 19 12 5 21 5 3" />
+))
+
+export const PauseIcon = icon(() => (
+  <>
+    <Rect x="6" y="4" width="4" height="16" />
+    <Rect x="14" y="4" width="4" height="16" />
+  </>
+))
+
+export const RotateCcwIcon = icon(() => (
+  <>
+    <Path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <Path d="M3 3v5h5" />
+  </>
+))
+
+export const ChevronLeftIcon = icon(() => (
+  <Path d="m15 18-6-6 6-6" />
+))
+
+export const HeadphonesIcon = icon(() => (
+  <Path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
+))
+
+export const RepeatIcon = icon(() => (
+  <>
+    <Path d="m17 2 4 4-4 4" />
+    <Path d="M3 11V9a4 4 0 0 1 4-4h14" />
+    <Path d="m7 22-4-4 4-4" />
+    <Path d="M21 13v2a4 4 0 0 1-4 4H3" />
+  </>
+))
+
 // Convenience named export
 export const Icons = {
   Home: HomeIcon,
@@ -448,6 +483,7 @@ export const Icons = {
   Lock: LockIcon,
   LogOut: LogOutIcon,
   ChevronRight: ChevronRightIcon,
+  ChevronLeft: ChevronLeftIcon,
   ArrowLeft: ArrowLeftIcon,
   BookmarkPlus: BookmarkPlusIcon,
   Type: TypeIcon,
@@ -467,5 +503,10 @@ export const Icons = {
   Sunrise: SunriseIcon,
   Sunset: SunsetIcon,
   Coffee: CoffeeIcon,
+  Play: PlayIcon,
+  Pause: PauseIcon,
+  RotateCcw: RotateCcwIcon,
+  Headphones: HeadphonesIcon,
+  Repeat: RepeatIcon,
   FlipCard,
 }

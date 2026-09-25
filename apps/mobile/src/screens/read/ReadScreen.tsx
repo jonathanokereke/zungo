@@ -27,7 +27,7 @@ interface LibraryResp {
 }
 
 type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
-type View = 'library' | 'reading'
+type ScreenView = 'library' | 'reading'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function tokenize(text: string): string[] {
@@ -51,7 +51,7 @@ export function ReadScreen() {
   const { getAccessToken } = useAuth()
 
   // Library state
-  const [view, setView] = useState<View>('library')
+  const [view, setView] = useState<ScreenView>('library')
   const [library, setLibrary] = useState<LibraryResp | null>(null)
   const [libraryLoading, setLibraryLoading] = useState(true)
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null)
