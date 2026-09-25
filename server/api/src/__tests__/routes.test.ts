@@ -17,6 +17,18 @@ vi.mock('../lib/anthropic', () => ({
   lookupWord: vi.fn(),
   streamWritingCorrection: vi.fn(),
 }))
+vi.mock('../lib/auth', () => ({
+  verifyAuth: vi.fn(async (request: any, reply: any) => {
+    if (!request.headers['authorization']) {
+      return reply.code(401).send({ error: { code: 'unauthorized', message: 'Missing Bearer token' } })
+    }
+    request.user = { sub: 'dev|user' }
+  }),
+  extractAuth0Email: vi.fn(() => 'test@example.com'),
+  extractAuth0Name: vi.fn(() => 'Test User'),
+}))
+// auth0.ts re-exports from auth.ts — mirror the mock so both import paths resolve
+vi.mock('../lib/auth0', async () => vi.importMock('../lib/auth'))
 
 import { lookupWord, streamWritingCorrection } from '../lib/anthropic'
 import { db } from '../db/index'
@@ -297,10 +309,13 @@ describe('POST /api/reviews/:wordId', () => {
 describe('GET /api/progress', () => {
   it('returns progress stats for the user', async () => {
     vi.mocked(db.select)
-      .mockReturnValueOnce(chainReturning([fakeUser]) as never)
-      .mockReturnValueOnce(chainReturning([{ count: 42 }]) as never)   // word count
-      .mockReturnValueOnce(chainReturning([{ count: 8 }]) as never)    // session count
-      .mockReturnValueOnce(chainReturning([fakeReview]) as never)       // recent reviews
+      .mockReturnValueOnce(chainReturning([fakeUser]) as never)          // getUser
+      .mockReturnValueOnce(chainReturning([{ count: 42 }]) as never)     // wordCount
+      .mockReturnValueOnce(chainReturning([{ count: 3 }]) as never)      // masteredCount
+      .mockReturnValueOnce(chainReturning([{ count: 12 }]) as never)     // totalReviewCount
+      .mockReturnValueOnce(chainReturning([{ count: 8 }]) as never)      // writingCount
+      .mockReturnValueOnce(chainReturning([{ count: 2 }]) as never)      // grammarCount
+      .mockReturnValueOnce(chainReturning([fakeReview]) as never)         // recentReviews
 
     const res = await app.inject({
       method: 'GET', url: '/api/progress',
@@ -456,5 +471,339 @@ describe('POST /api/writing/correct', () => {
     })
 
     expect(res.statusCode).toBe(404)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WOTD
+// ─────────────────────────────────────────────────────────────────────────────
+describe('GET /api/words/wotd', () => {
+  it('returns a word deterministically based on the current day', async () => {
+    vi.mocked(db.select)
+      .mockReturnValueOnce(chainReturning([fakeUser]) as never)
+      .mockReturnValueOnce(chainReturning([fakeWord]) as never)
+
+    const res = await app.inject({
+      method: 'GET', url: '/api/words/wotd',
+      headers: { authorization: DEV_TOKEN },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().data.german).toBe('das Haus')
+  })
+
+  it('returns null data when user has no words', async () => {
+    vi.mocked(db.select)
+      .mockReturnValueOnce(chainReturning([fakeUser]) as never)
+      .mockReturnValueOnce(chainReturning([]) as never)
+
+    const res = await app.inject({
+      method: 'GET', url: '/api/words/wotd',
+      headers: { authorization: DEV_TOKEN },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().data).toBeNull()
+  })
+
+  it('returns 404 when user not found', async () => {
+    setupDbUser(null)
+
+    const res = await app.inject({
+      method: 'GET', url: '/api/words/wotd',
+      headers: { authorization: DEV_TOKEN },
+    })
+
+    expect(res.statusCode).toBe(404)
+    expect(res.json().error.code).toBe('not_found')
+  })
+
+  it('returns 401 without token', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/words/wotd' })
+    expect(res.statusCode).toBe(401)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reading sessions
+// ─────────────────────────────────────────────────────────────────────────────
+const fakeSession = {
+  id: 'session-uuid',
+  user_id: fakeUser.id,
+  title: 'Der Bahnhof',
+  level: 'B1' as const,
+  topic: 'Travel',
+  words_looked_up: 3,
+  duration_seconds: 240,
+  created_at: new Date(),
+}
+
+describe('POST /api/reading/sessions', () => {
+  const validBody = {
+    title: 'Der Bahnhof',
+    level: 'B1',
+    topic: 'Travel',
+    words_looked_up: 3,
+    duration_seconds: 240,
+  }
+
+  it('saves a reading session and returns 201', async () => {
+    vi.mocked(db.select).mockReturnValueOnce(chainReturning([fakeUser]) as never)
+    vi.mocked(db.insert).mockReturnValue(chainReturning([fakeSession]) as never)
+
+    const res = await app.inject({
+      method: 'POST', url: '/api/reading/sessions',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify(validBody),
+    })
+
+    expect(res.statusCode).toBe(201)
+    expect(res.json().data.title).toBe('Der Bahnhof')
+    expect(res.json().data.words_looked_up).toBe(3)
+  })
+
+  it('returns 400 for invalid level enum', async () => {
+    setupDbUser(fakeUser)
+
+    const res = await app.inject({
+      method: 'POST', url: '/api/reading/sessions',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({ ...validBody, level: 'D1' }),
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error.code).toBe('validation_error')
+  })
+
+  it('returns 400 when title is missing', async () => {
+    setupDbUser(fakeUser)
+
+    const res = await app.inject({
+      method: 'POST', url: '/api/reading/sessions',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({ level: 'B1', topic: 'Travel', words_looked_up: 0, duration_seconds: 0 }),
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error.code).toBe('validation_error')
+  })
+
+  it('returns 404 when user not found', async () => {
+    setupDbUser(null)
+
+    const res = await app.inject({
+      method: 'POST', url: '/api/reading/sessions',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify(validBody),
+    })
+
+    expect(res.statusCode).toBe(404)
+  })
+
+  it('returns 401 without token', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/reading/sessions',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(validBody),
+    })
+    expect(res.statusCode).toBe(401)
+  })
+})
+
+describe('GET /api/reading/sessions', () => {
+  it('returns the last 50 sessions for the user', async () => {
+    vi.mocked(db.select)
+      .mockReturnValueOnce(chainReturning([fakeUser]) as never)
+      .mockReturnValueOnce(chainReturning([fakeSession]) as never)
+
+    const res = await app.inject({
+      method: 'GET', url: '/api/reading/sessions',
+      headers: { authorization: DEV_TOKEN },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().data).toHaveLength(1)
+    expect(res.json().data[0].title).toBe('Der Bahnhof')
+  })
+
+  it('returns empty array when user has no sessions', async () => {
+    vi.mocked(db.select)
+      .mockReturnValueOnce(chainReturning([fakeUser]) as never)
+      .mockReturnValueOnce(chainReturning([]) as never)
+
+    const res = await app.inject({
+      method: 'GET', url: '/api/reading/sessions',
+      headers: { authorization: DEV_TOKEN },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().data).toHaveLength(0)
+  })
+
+  it('returns 404 when user not found', async () => {
+    setupDbUser(null)
+
+    const res = await app.inject({
+      method: 'GET', url: '/api/reading/sessions',
+      headers: { authorization: DEV_TOKEN },
+    })
+
+    expect(res.statusCode).toBe(404)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Push tokens
+// ─────────────────────────────────────────────────────────────────────────────
+describe('POST /api/push/token', () => {
+  it('stores a push token and returns ok', async () => {
+    vi.mocked(db.update).mockReturnValue(chainReturning([]) as never)
+
+    const res = await app.inject({
+      method: 'POST', url: '/api/push/token',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({ token: 'ExponentPushToken[abc123]' }),
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().data.ok).toBe(true)
+  })
+
+  it('returns 400 when token is empty string', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/push/token',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({ token: '' }),
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error.code).toBe('validation_error')
+  })
+
+  it('returns 400 when token field is missing', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/push/token',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error.code).toBe('validation_error')
+  })
+
+  it('returns 401 without token', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/push/token',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: 'ExponentPushToken[abc123]' }),
+    })
+    expect(res.statusCode).toBe(401)
+  })
+})
+
+describe('DELETE /api/push/token', () => {
+  it('clears the push token and returns ok', async () => {
+    vi.mocked(db.update).mockReturnValue(chainReturning([]) as never)
+
+    const res = await app.inject({
+      method: 'DELETE', url: '/api/push/token',
+      headers: { authorization: DEV_TOKEN },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().data.ok).toBe(true)
+  })
+
+  it('returns 401 without token', async () => {
+    const res = await app.inject({ method: 'DELETE', url: '/api/push/token' })
+    expect(res.statusCode).toBe(401)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Edit profile
+// ─────────────────────────────────────────────────────────────────────────────
+describe('PATCH /api/users/me/profile', () => {
+  it('updates preferred_name and returns updated user', async () => {
+    const updated = { ...fakeUser, preferred_name: 'Jonathan', name: fakeUser.name ?? '' }
+    vi.mocked(db.update).mockReturnValue(chainReturning([updated]) as never)
+
+    const res = await app.inject({
+      method: 'PATCH', url: '/api/users/me/profile',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({ preferred_name: 'Jonathan' }),
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().data.preferred_name).toBe('Jonathan')
+  })
+
+  it('updates email and returns updated user', async () => {
+    const updated = { ...fakeUser, email: 'new@example.com' }
+    vi.mocked(db.update).mockReturnValue(chainReturning([updated]) as never)
+
+    const res = await app.inject({
+      method: 'PATCH', url: '/api/users/me/profile',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'new@example.com' }),
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().data.email).toBe('new@example.com')
+  })
+
+  it('returns 400 when neither field is provided', async () => {
+    const res = await app.inject({
+      method: 'PATCH', url: '/api/users/me/profile',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error.code).toBe('validation_error')
+  })
+
+  it('returns 400 for invalid email format', async () => {
+    const res = await app.inject({
+      method: 'PATCH', url: '/api/users/me/profile',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'not-an-email' }),
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error.code).toBe('validation_error')
+  })
+
+  it('returns 400 for empty preferred_name', async () => {
+    const res = await app.inject({
+      method: 'PATCH', url: '/api/users/me/profile',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({ preferred_name: '' }),
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error.code).toBe('validation_error')
+  })
+
+  it('returns 404 when user does not exist', async () => {
+    vi.mocked(db.update).mockReturnValue(chainReturning([]) as never)
+
+    const res = await app.inject({
+      method: 'PATCH', url: '/api/users/me/profile',
+      headers: { authorization: DEV_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({ preferred_name: 'Ghost' }),
+    })
+
+    expect(res.statusCode).toBe(404)
+    expect(res.json().error.code).toBe('not_found')
+  })
+
+  it('returns 401 without token', async () => {
+    const res = await app.inject({
+      method: 'PATCH', url: '/api/users/me/profile',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ preferred_name: 'Jonathan' }),
+    })
+    expect(res.statusCode).toBe(401)
   })
 })
