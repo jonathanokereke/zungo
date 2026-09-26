@@ -93,7 +93,15 @@ function AppShell() {
         }
       } catch (e: any) {
         console.warn('syncAndCheck error:', e?.message ?? e)
-        setOnboardingDone(false)
+        // Don't force re-onboarding on network errors — leave state as null so the
+        // loading spinner stays up; the user can retry by backgrounding and reopening.
+        // Only set false if the error is clearly auth-related (401/403).
+        const msg = e?.message ?? ''
+        if (msg.includes('401') || msg.includes('403') || msg.includes('Unauthorized')) {
+          setOnboardingDone(false)
+        }
+        // Otherwise leave onboardingDone as null (loading state) — avoids wiping progress
+        // on transient network failures.
       }
     }
     syncAndCheck()

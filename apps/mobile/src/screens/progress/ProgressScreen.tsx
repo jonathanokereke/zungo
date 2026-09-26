@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
@@ -60,8 +60,6 @@ export function ProgressScreen() {
       setGrammarSessions(grammar)
     } catch {} finally { setLoading(false) }
   }
-
-  useEffect(() => { load() }, [])
 
   useFocusEffect(useCallback(() => { load() }, []))
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation, useFocusEffect } from '@react-navigation/native'
@@ -30,38 +30,36 @@ export function DashboardScreen() {
 
   const defaultActivity: TodayActivity = { vocab_reviews: 0, grammar: 0, reading: 0, listening: 0, chat: 0, shadowing: 0, writing: 0 }
 
-  async function load() {
-    try {
-      const token = await getAccessToken()
-      const [prog, due, acts, me, wotdResp] = await Promise.all([
-        apiFetch<ProgressResp>('/api/progress', {}, token),
-        apiFetch<unknown[]>('/api/reviews/due', {}, token),
-        apiFetch<ActivityItem[]>('/api/activity', {}, token).catch(() => [] as ActivityItem[]),
-        apiFetch<UserMe>('/api/users/me', {}, token).catch(() => ({ email: '', level: 'B1' }) as UserMe),
-        apiFetch<WordItem | null>('/api/words/wotd', {}, token).catch(() => null),
-      ])
-      setProgress({
-        level: prog.user.level,
-        streak: prog.user.streak,
-        words_due: due.length,
-        total_words: prog.total_words,
-        mastery_score: prog.retention_rate_30d,
-        total_xp: prog.total_xp ?? 0,
-        today_activity: prog.today_activity ?? defaultActivity,
-      })
-      setActivity(acts)
-      setUserName(me.preferred_name || me.name || me.email.split('@')[0] || 'Learner')
-      if (wotdResp) setWotd(wotdResp)
-    } catch {
-      setProgress({ level: 'B1', streak: 0, words_due: 0, total_words: 0, mastery_score: 0, total_xp: 0, today_activity: defaultActivity })
-    } finally { setLoading(false) }
-  }
-
-  useEffect(() => { load() }, [])
-
   useFocusEffect(useCallback(() => {
+    async function load() {
+      try {
+        const token = await getAccessToken()
+        const [prog, due, acts, me, wotdResp] = await Promise.all([
+          apiFetch<ProgressResp>('/api/progress', {}, token),
+          apiFetch<unknown[]>('/api/reviews/due', {}, token).catch(() => [] as unknown[]),
+          apiFetch<ActivityItem[]>('/api/activity', {}, token).catch(() => [] as ActivityItem[]),
+          apiFetch<UserMe>('/api/users/me', {}, token).catch(() => ({ email: '', level: 'B1', preferred_name: '', name: '' }) as UserMe),
+          apiFetch<WordItem | null>('/api/words/wotd', {}, token).catch(() => null),
+        ])
+        setProgress({
+          level: prog.user.level,
+          streak: prog.user.streak,
+          words_due: due.length,
+          total_words: prog.total_words,
+          mastery_score: prog.retention_rate_30d,
+          total_xp: prog.total_xp ?? 0,
+          today_activity: prog.today_activity ?? defaultActivity,
+        })
+        setActivity(acts)
+        setUserName(me.preferred_name || me.name || me.email.split('@')[0] || 'Learner')
+        if (wotdResp) setWotd(wotdResp)
+      } catch {
+        setProgress({ level: 'B1', streak: 0, words_due: 0, total_words: 0, mastery_score: 0, total_xp: 0, today_activity: defaultActivity })
+        setUserName(prev => prev || 'Learner')
+      } finally { setLoading(false) }
+    }
     load()
-  }, []))
+  }, [getAccessToken]))
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend'

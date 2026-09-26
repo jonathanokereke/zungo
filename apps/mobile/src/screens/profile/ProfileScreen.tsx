@@ -20,6 +20,7 @@ export function ProfileScreen() {
   const [serverUser, setServerUser] = useState<UserMe | null>(null)
   const [userPrefs, setUserPrefs] = useState<Prefs>({})
   const [dailyReminder, setDailyReminder] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   // Edit profile modal state
   const [editVisible, setEditVisible] = useState(false)
@@ -39,7 +40,10 @@ export function ProfileScreen() {
         setProfileData(d)
         setServerUser(me)
         if (me.preferences_json) setUserPrefs(me.preferences_json)
-      } catch {}
+      } catch (e: any) {
+        console.warn('ProfileScreen load error:', e?.message ?? e)
+        setLoadError(true)
+      }
     }
     load()
   }, [])
