@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useFocusEffect } from '@react-navigation/native'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
@@ -20,12 +21,14 @@ interface Details {
   reading_stats: { total_sessions: number; total_words_looked_up: number; total_minutes: number }
   weak_grammar_topics: { topic: string; avg_pct: number; sessions: number }[]
   writing_stats: { total: number; above_level: number; at_level: number; below_level: number }
+  listening_stats?: { total_sessions: number; avg_pct: number }
+  shadowing_stats?: { total_sessions: number }
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CEFR = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const
 const LEVEL_MASTERY_TARGETS: Record<string, number> = { A1: 800, A2: 2000, B1: 4000, B2: 8000, C1: 12000, C2: 20000 }
-const SKILL_COLORS = ['#3730A3', '#B45309', '#6366F1']
+const SKILL_COLORS = ['#3730A3', '#B45309', '#6366F1', '#16A34A', '#0891B2', '#9333EA']
 
 // ── Heatmap helpers ───────────────────────────────────────────────────────────
 function heatColor(count: number, isDark: boolean): string {
@@ -44,22 +47,23 @@ export function ProgressScreen() {
   const [grammarSessions, setGrammarSessions] = useState<GrammarSession[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const token = await getAccessToken()
-        const [progress, det, grammar] = await Promise.all([
-          apiFetch<ProgressData>('/api/progress', {}, token),
-          apiFetch<Details>('/api/progress/details', {}, token),
-          apiFetch<GrammarSession[]>('/api/grammar/sessions', {}, token).catch(() => [] as GrammarSession[]),
-        ])
-        setData(progress)
-        setDetails(det)
-        setGrammarSessions(grammar)
-      } catch {} finally { setLoading(false) }
-    }
-    load()
-  }, [])
+  async function load() {
+    try {
+      const token = await getAccessToken()
+      const [progress, det, grammar] = await Promise.all([
+        apiFetch<ProgressData>('/api/progress', {}, token),
+        apiFetch<Details>('/api/progress/details', {}, token),
+        apiFetch<GrammarSession[]>('/api/grammar/sessions', {}, token).catch(() => [] as GrammarSession[]),
+      ])
+      setData(progress)
+      setDetails(det)
+      setGrammarSessions(grammar)
+    } catch {} finally { setLoading(false) }
+  }
+
+  useEffect(() => { load() }, [])
+
+  useFocusEffect(useCallback(() => { load() }, []))
 
   if (loading) return (
     <SafeAreaView style={[{ flex: 1, backgroundColor: C.bg }]} edges={['top']}>
@@ -92,18 +96,26 @@ export function ProgressScreen() {
   const maxXP = Math.max(1, ...weeklyXP.map(d => d.xp))
   const weekXPTotal = weeklyXP.reduce((s, d) => s + d.xp, 0)
 
-  const vocabPct   = retention
-  const grammarPct = grammarSessions.length > 0
+  const listeningStats = details?.listening_stats ?? { total_sessions: 0, avg_pct: 0 }
+  const shadowingStats = details?.shadowing_stats ?? { total_sessions: 0 }
+
+  const vocabPct     = retention
+  const grammarPct   = grammarSessions.length > 0
     ? Math.round(grammarSessions.reduce((s, g) => s + g.pct, 0) / grammarSessions.length) : 0
-  const writingPct = Math.min(100, writingStats.total * 10)
-  const readingPct = Math.min(100, readingStats.total_sessions * 8)
-  const skillPcts  = [vocabPct, grammarPct, writingPct, readingPct]
-  const SKILL_NAMES = ['Vocabulary', 'Grammar', 'Writing', 'Reading']
+  const writingPct   = Math.min(100, writingStats.total * 10)
+  const readingPct   = Math.min(100, readingStats.total_sessions * 8)
+  const listeningPct = listeningStats.total_sessions > 0 ? listeningStats.avg_pct : 0
+  const shadowingPct = Math.min(100, shadowingStats.total_sessions * 8)
+
+  const skillPcts  = [vocabPct, grammarPct, writingPct, readingPct, listeningPct, shadowingPct]
+  const SKILL_NAMES = ['Vocabulary', 'Grammar', 'Writing', 'Reading', 'Listening', 'Shadowing']
   const SKILL_ICONS = [
     <Icons.BookOpen size={14} color={SKILL_COLORS[0]!} />,
     <Icons.ListChecks size={14} color={SKILL_COLORS[1]!} />,
     <Icons.PenLine size={14} color={SKILL_COLORS[2]!} />,
     <Icons.BookOpen size={14} color="#16A34A" />,
+    <Icons.Volume size={14} color="#0891B2" />,
+    <Icons.Headphones size={14} color="#9333EA" />,
   ]
 
   // Stats cards
@@ -236,7 +248,7 @@ export function ProgressScreen() {
           <Text style={[pg.sectionCardTitle, { color: C.text, marginBottom: 16 }]}>Skills</Text>
           {SKILL_NAMES.map((name, i) => {
             const pct = skillPcts[i] ?? 0
-            const color = i < SKILL_COLORS.length ? SKILL_COLORS[i]! : '#16A34A'
+            const color = SKILL_COLORS[i] ?? '#6366F1'
             return (
               <View key={i} style={{ marginBottom: i < SKILL_NAMES.length - 1 ? 14 : 0 }}>
                 <View style={pg.skillRow}>

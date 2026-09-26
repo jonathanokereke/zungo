@@ -4,11 +4,14 @@ import {
   TouchableOpacity, View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useNavigation } from '@react-navigation/native'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
 import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
+import type { RootStackParamList } from '../../navigation/RootNavigator'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Deck {
@@ -45,6 +48,7 @@ type ScreenView = 'list' | 'detail'
 export function DecksScreen() {
   const { colors: C } = useTheme()
   const { getAccessToken } = useAuth()
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
 
   const [view, setView] = useState<ScreenView>('list')
   const [decks, setDecks] = useState<Deck[]>([])
@@ -89,9 +93,10 @@ export function DecksScreen() {
         token,
       )
       setImportResult({ added: resp.added })
-      // Update local state
       setDetail(d => d ? { ...d, imported: true } : d)
       setDecks(ds => ds.map(d => d.id === detail.id ? { ...d, imported: true } : d))
+      // Give user a moment to read the success message then take them to Vocabulary
+      setTimeout(() => navigation.navigate('Vocabulary'), 1500)
     } catch {} finally { setImporting(false) }
   }
 
@@ -193,18 +198,11 @@ export function DecksScreen() {
 
   // ── List view ─────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[st.container, { backgroundColor: C.bg }]} edges={['top']}>
+    <SafeAreaView style={[st.container, { backgroundColor: C.bg }]} edges={['bottom']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
-        {/* Header */}
-        <View style={st.header}>
-          <View style={[st.headerIcon, { backgroundColor: 'rgba(55,48,163,.1)' }]}>
-            <Icons.Layers size={28} color={C.primary} />
-          </View>
-          <Text style={[st.headerTitle, { color: C.text }]}>Vocabulary Decks</Text>
-          <Text style={[st.headerSub, { color: C.text3 }]}>
-            Curated word sets by topic and level. Import any deck to add the words to your review queue.
-          </Text>
-        </View>
+        <Text style={[st.headerSub, { color: C.text3, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 }]}>
+          Curated word sets by topic and level. Import any deck to add the words to your review queue.
+        </Text>
 
         {/* Level filter */}
         <ScrollView

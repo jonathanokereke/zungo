@@ -15,15 +15,17 @@ interface ReviewCard { word_id: string; word: string; article?: string; definiti
 type Rating = 1 | 2 | 3 | 4
 
 // SM-2 next interval preview — mirrors server-side calculateNextReview
-// New card (repetition=0): Again<10m, Hard=1d, Good=1d, Easy=4d (Anki-style first-time bonus)
-// Learning card (repetition=1, interval=1): Again<10m, Hard=1d, Good=6d, Easy=8d
-// Mature card (repetition≥2): scaled by easeFactor
+// New card (repetition=0):    Again<10m · Hard=10m · Good=1d  · Easy=4d
+// Learning card (rep=1, i=1): Again<10m · Hard=1d  · Good=6d  · Easy=8d
+// Mature card (rep≥2):        Again<10m · Hard×1.2 · Good×EF  · Easy×EF×1.3
 function previewInterval(interval: number, easeFactor: number, repetition: number, quality: Rating): string {
   if (quality === 1) return '<10m'
   if (quality === 2) {
-    if (repetition === 0) return '1d'
-    const next = Math.round(interval * 1.2)
-    return next < 2 ? '1d' : `${next}d`
+    // Hard: keep in learning steps (slightly longer than Again, shorter than Good)
+    if (repetition === 0) return '10m'
+    if (repetition === 1) return '1d'
+    const next = Math.max(2, Math.round(interval * 1.2))
+    return `${next}d`
   }
   if (repetition === 0) return quality === 4 ? '4d' : '1d'
   if (repetition === 1) return quality === 4 ? '8d' : '6d'

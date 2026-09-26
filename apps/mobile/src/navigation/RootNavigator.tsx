@@ -106,14 +106,24 @@ export function RootNavigator() {
         name="Shadow"
         component={ShadowScreen}
         options={{
-          headerShown: false,
+          headerShown: true,
+          headerTitle: 'Shadowing',
+          headerTintColor: C.primary,
+          headerStyle: { backgroundColor: C.bg },
+          headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: '700', color: C.text },
         }}
       />
       <Stack.Screen
         name="Decks"
         component={DecksScreen}
         options={{
-          headerShown: false,
+          headerShown: true,
+          headerTitle: 'Vocabulary Decks',
+          headerTintColor: C.primary,
+          headerStyle: { backgroundColor: C.bg },
+          headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: '700', color: C.text },
         }}
       />
       <Stack.Screen
@@ -124,7 +134,14 @@ export function RootNavigator() {
       <Stack.Screen
         name="Listen"
         component={ListenScreen}
-        options={{ headerShown: false }}
+        options={{
+          headerShown: true,
+          headerTitle: 'Listening',
+          headerTintColor: C.primary,
+          headerStyle: { backgroundColor: C.bg },
+          headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: '700', color: C.text },
+        }}
       />
     </Stack.Navigator>
   )

@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/index'
-import { users, words, reviews, writing_sessions, grammar_sessions, reading_sessions, listening_sessions } from '../db/schema'
+import { users, words, reviews, writing_sessions, grammar_sessions, reading_sessions, listening_sessions, chat_sessions, shadowing_sessions } from '../db/schema'
 import { eq, gte, count, and, gt, isNotNull, sql } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 
@@ -27,6 +27,21 @@ export async function progressRoutes(app: FastifyInstance) {
       .where(and(eq(reviews.user_id, user.id), isNotNull(reviews.last_reviewed_at)))
     const [writingCount] = await db.select({ count: count() }).from(writing_sessions).where(eq(writing_sessions.user_id, user.id))
     const [grammarCount] = await db.select({ count: count() }).from(grammar_sessions).where(eq(grammar_sessions.user_id, user.id))
+    const [readingCount] = await db.select({ count: count() }).from(reading_sessions).where(eq(reading_sessions.user_id, user.id))
+    const [listeningCount] = await db.select({ count: count() }).from(listening_sessions).where(eq(listening_sessions.user_id, user.id))
+    const [chatCount] = await db.select({ count: count() }).from(chat_sessions).where(eq(chat_sessions.user_id, user.id))
+
+    // Today's session counts per activity (for dashboard plan card progress bars)
+    const todayStart = new Date(new Date().toISOString().split('T')[0]! + 'T00:00:00.000Z')
+    const [todayGrammar, todayReading, todayListening, todayChat, todayShadowing, todayWriting, todayReviews] = await Promise.all([
+      db.select({ count: count() }).from(grammar_sessions).where(and(eq(grammar_sessions.user_id, user.id), gte(grammar_sessions.created_at, todayStart))),
+      db.select({ count: count() }).from(reading_sessions).where(and(eq(reading_sessions.user_id, user.id), gte(reading_sessions.created_at, todayStart))),
+      db.select({ count: count() }).from(listening_sessions).where(and(eq(listening_sessions.user_id, user.id), gte(listening_sessions.created_at, todayStart))),
+      db.select({ count: count() }).from(chat_sessions).where(and(eq(chat_sessions.user_id, user.id), gte(chat_sessions.created_at, todayStart))),
+      db.select({ count: count() }).from(shadowing_sessions).where(and(eq(shadowing_sessions.user_id, user.id), gte(shadowing_sessions.created_at, todayStart))),
+      db.select({ count: count() }).from(writing_sessions).where(and(eq(writing_sessions.user_id, user.id), gte(writing_sessions.created_at, todayStart))),
+      db.select({ count: count() }).from(reviews).where(and(eq(reviews.user_id, user.id), gte(reviews.last_reviewed_at, todayStart), isNotNull(reviews.last_reviewed_at))),
+    ])
 
     const recentReviews = await db.select().from(reviews)
       .where(and(eq(reviews.user_id, user.id), gte(reviews.last_reviewed_at, thirtyDaysAgo)))
@@ -35,11 +50,14 @@ export async function progressRoutes(app: FastifyInstance) {
     const passedCount = recentReviews.filter(r => r.repetition > 0).length
     const retentionRate = reviewedCount > 0 ? Math.round((passedCount / reviewedCount) * 100) : 0
 
-    // XP: 10 per review completed, 50 per writing session, 20 per grammar session
+    // XP: 10 per review, 50 per writing, 20 per grammar, 30 per reading, 25 per listening, 15 per chat
     const totalXp =
       (totalReviewCount?.count ?? 0) * 10 +
       (writingCount?.count ?? 0) * 50 +
-      (grammarCount?.count ?? 0) * 20
+      (grammarCount?.count ?? 0) * 20 +
+      (readingCount?.count ?? 0) * 30 +
+      (listeningCount?.count ?? 0) * 25 +
+      (chatCount?.count ?? 0) * 15
 
     return reply.send({
       data: {
@@ -54,6 +72,15 @@ export async function progressRoutes(app: FastifyInstance) {
         total_xp: totalXp,
         retention_rate_30d: retentionRate,
         reviews_30d: reviewedCount,
+        today_activity: {
+          vocab_reviews: todayReviews[0]?.count ?? 0,
+          grammar: todayGrammar[0]?.count ?? 0,
+          reading: todayReading[0]?.count ?? 0,
+          listening: todayListening[0]?.count ?? 0,
+          chat: todayChat[0]?.count ?? 0,
+          shadowing: todayShadowing[0]?.count ?? 0,
+          writing: todayWriting[0]?.count ?? 0,
+        },
       },
     })
   })
@@ -70,7 +97,7 @@ export async function progressRoutes(app: FastifyInstance) {
 
     // ── 1. Activity heatmap — last 30 days ────────────────────────────────────
     // Count events per calendar day across all activity types
-    const [writingDays, reviewDays, grammarDays, readingDays, listeningDays] = await Promise.all([
+    const [writingDays, reviewDays, grammarDays, readingDays, listeningDays, chatDays] = await Promise.all([
       db.select({
         day: sql<string>`to_char(${writing_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
         cnt: count(),
@@ -105,10 +132,17 @@ export async function progressRoutes(app: FastifyInstance) {
       }).from(listening_sessions)
         .where(and(eq(listening_sessions.user_id, user.id), gte(listening_sessions.created_at, thirtyDaysAgo)))
         .groupBy(sql`to_char(${listening_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`),
+
+      db.select({
+        day: sql<string>`to_char(${chat_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+        cnt: count(),
+      }).from(chat_sessions)
+        .where(and(eq(chat_sessions.user_id, user.id), gte(chat_sessions.created_at, thirtyDaysAgo)))
+        .groupBy(sql`to_char(${chat_sessions.created_at} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`),
     ])
 
     const activityMap = new Map<string, number>()
-    for (const { day, cnt } of [...writingDays, ...reviewDays, ...grammarDays, ...readingDays, ...listeningDays]) {
+    for (const { day, cnt } of [...writingDays, ...reviewDays, ...grammarDays, ...readingDays, ...listeningDays, ...chatDays]) {
       activityMap.set(day, (activityMap.get(day) ?? 0) + Number(cnt))
     }
 
@@ -128,6 +162,7 @@ export async function progressRoutes(app: FastifyInstance) {
       [grammarDays,   20],
       [readingDays,   30],
       [listeningDays, 25],
+      [chatDays,      15],
     ]
     for (const [rows, perUnit] of xpSources) {
       for (const { day, cnt } of rows.filter(r => r.day >= sevenDaysAgoStr)) {
@@ -180,8 +215,21 @@ export async function progressRoutes(app: FastifyInstance) {
       else if (assessment === 'below_level') writing_stats.below_level++
     }
 
+    // ── 6. Listening stats ────────────────────────────────────────────────────
+    const allListeningSessions = await db.select().from(listening_sessions).where(eq(listening_sessions.user_id, user.id))
+    const listening_stats = {
+      total_sessions: allListeningSessions.length,
+      avg_pct: allListeningSessions.length > 0
+        ? Math.round(allListeningSessions.reduce((s, l) => s + l.pct, 0) / allListeningSessions.length)
+        : 0,
+    }
+
+    // ── 7. Shadowing stats ────────────────────────────────────────────────────
+    const [shadowCount] = await db.select({ count: count() }).from(shadowing_sessions).where(eq(shadowing_sessions.user_id, user.id))
+    const shadowing_stats = { total_sessions: shadowCount?.count ?? 0 }
+
     return reply.send({
-      data: { weekly_xp, activity_30d, reading_stats, weak_grammar_topics, writing_stats },
+      data: { weekly_xp, activity_30d, reading_stats, weak_grammar_topics, writing_stats, listening_stats, shadowing_stats },
     })
   })
 

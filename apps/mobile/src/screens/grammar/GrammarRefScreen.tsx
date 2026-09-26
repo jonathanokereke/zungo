@@ -150,11 +150,16 @@ export function GrammarRefScreen() {
                 </View>
                 <Text style={[gr.cardTitle, { color: C.text }]}>Examples</Text>
               </View>
-              <View style={{ gap: 12 }}>
+              <View style={{ gap: 10 }}>
                 {ref.examples.map((ex, i) => (
-                  <View key={i} style={[gr.exampleBox, { borderLeftColor: color, backgroundColor: C.bg }]}>
-                    <Text style={[gr.exGerman, { color: C.text }]}>{ex.german}</Text>
-                    <Text style={[gr.exEnglish, { color: C.text3 }]}>{ex.english}</Text>
+                  <View key={i} style={[gr.exampleBox, { backgroundColor: C.bg }]}>
+                    <View style={[gr.exNum, { backgroundColor: `${color}18` }]}>
+                      <Text style={[gr.exNumText, { color }]}>{i + 1}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[gr.exGerman, { color: C.text }]}>{ex.german}</Text>
+                      <Text style={[gr.exEnglish, { color: C.text3 }]}>{ex.english}</Text>
+                    </View>
                   </View>
                 ))}
               </View>
@@ -239,8 +244,10 @@ const gr = StyleSheet.create({
   tableLabel: { width: 110, fontSize: 12, fontFamily: Fonts.medium, paddingTop: 1 },
   tableValue: { flex: 1, fontSize: 13, fontFamily: Fonts.regular, lineHeight: 20 },
 
-  exampleBox: { borderLeftWidth: 3, paddingLeft: 12, borderRadius: 4 },
-  exGerman: { fontSize: 15, fontFamily: Fonts.semibold, marginBottom: 2 },
+  exampleBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderRadius: 10, padding: 12 },
+  exNum: { width: 24, height: 24, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
+  exNumText: { fontSize: 11, fontFamily: Fonts.bold },
+  exGerman: { fontSize: 15, fontFamily: Fonts.semibold, marginBottom: 3 },
   exEnglish: { fontSize: 13, fontFamily: Fonts.italic, lineHeight: 18 },
 
   tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },

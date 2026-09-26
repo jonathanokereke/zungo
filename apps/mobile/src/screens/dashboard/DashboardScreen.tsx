@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../lib/useAuth'
@@ -10,8 +10,9 @@ import { useTheme } from '../../lib/ThemeContext'
 import { Icons } from '../../lib/icons'
 import type { RootStackParamList } from '../../navigation/RootNavigator'
 
-interface ProgressResp { total_words: number; total_xp: number; retention_rate_30d: number; user: { level: string; streak: number } }
-interface UserProgress { level: string; streak: number; words_due: number; total_words: number; mastery_score: number; total_xp: number }
+interface TodayActivity { vocab_reviews: number; grammar: number; reading: number; listening: number; chat: number; shadowing: number; writing: number }
+interface ProgressResp { total_words: number; total_xp: number; retention_rate_30d: number; user: { level: string; streak: number }; today_activity?: TodayActivity }
+interface UserProgress { level: string; streak: number; words_due: number; total_words: number; mastery_score: number; total_xp: number; today_activity: TodayActivity }
 interface ActivityItem { type: string; title: string; sub: string; time: string }
 interface WordItem { german: string; translation: string; part_of_speech: string; example_sentence?: string }
 interface UserMe { email: string; level: string; preferred_name: string; name: string }
@@ -27,34 +28,40 @@ export function DashboardScreen() {
   const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const token = await getAccessToken()
-        const [prog, due, acts, me, wotdResp] = await Promise.all([
-          apiFetch<ProgressResp>('/api/progress', {}, token),
-          apiFetch<unknown[]>('/api/reviews/due', {}, token),
-          apiFetch<ActivityItem[]>('/api/activity', {}, token).catch(() => [] as ActivityItem[]),
-          apiFetch<UserMe>('/api/users/me', {}, token).catch(() => ({ email: '', level: 'B1' }) as UserMe),
-          apiFetch<WordItem | null>('/api/words/wotd', {}, token).catch(() => null),
-        ])
-        setProgress({
-          level: prog.user.level,
-          streak: prog.user.streak,
-          words_due: due.length,
-          total_words: prog.total_words,
-          mastery_score: prog.retention_rate_30d,
-          total_xp: prog.total_xp ?? 0,
-        })
-        setActivity(acts)
-        setUserName(me.preferred_name || me.name || me.email.split('@')[0] || 'Learner')
-        if (wotdResp) setWotd(wotdResp)
-      } catch {
-        setProgress({ level: 'B1', streak: 0, words_due: 0, total_words: 0, mastery_score: 0, total_xp: 0 })
-      } finally { setLoading(false) }
-    }
+  const defaultActivity: TodayActivity = { vocab_reviews: 0, grammar: 0, reading: 0, listening: 0, chat: 0, shadowing: 0, writing: 0 }
+
+  async function load() {
+    try {
+      const token = await getAccessToken()
+      const [prog, due, acts, me, wotdResp] = await Promise.all([
+        apiFetch<ProgressResp>('/api/progress', {}, token),
+        apiFetch<unknown[]>('/api/reviews/due', {}, token),
+        apiFetch<ActivityItem[]>('/api/activity', {}, token).catch(() => [] as ActivityItem[]),
+        apiFetch<UserMe>('/api/users/me', {}, token).catch(() => ({ email: '', level: 'B1' }) as UserMe),
+        apiFetch<WordItem | null>('/api/words/wotd', {}, token).catch(() => null),
+      ])
+      setProgress({
+        level: prog.user.level,
+        streak: prog.user.streak,
+        words_due: due.length,
+        total_words: prog.total_words,
+        mastery_score: prog.retention_rate_30d,
+        total_xp: prog.total_xp ?? 0,
+        today_activity: prog.today_activity ?? defaultActivity,
+      })
+      setActivity(acts)
+      setUserName(me.preferred_name || me.name || me.email.split('@')[0] || 'Learner')
+      if (wotdResp) setWotd(wotdResp)
+    } catch {
+      setProgress({ level: 'B1', streak: 0, words_due: 0, total_words: 0, mastery_score: 0, total_xp: 0, today_activity: defaultActivity })
+    } finally { setLoading(false) }
+  }
+
+  useEffect(() => { load() }, [])
+
+  useFocusEffect(useCallback(() => {
     load()
-  }, [])
+  }, []))
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend'
@@ -66,25 +73,33 @@ export function DashboardScreen() {
   )
 
   function activityIcon(type: string) {
-    if (type === 'writing') return <Icons.PenLine size={16} color={C.primary} />
-    if (type === 'review') return <Icons.BookOpen size={16} color={C.accentD} />
-    if (type === 'grammar') return <Icons.Sparkles size={16} color="#7C3AED" />
+    if (type === 'writing')   return <Icons.PenLine size={16} color={C.primary} />
+    if (type === 'review')    return <Icons.BookOpen size={16} color={C.accentD} />
+    if (type === 'grammar')   return <Icons.Sparkles size={16} color="#7C3AED" />
+    if (type === 'reading')   return <Icons.BookOpen size={16} color="#3730A3" />
+    if (type === 'listening') return <Icons.Volume size={16} color="#0891B2" />
+    if (type === 'chat')      return <Icons.MessageSquare size={16} color={C.success} />
     return <Icons.CheckCircle size={16} color={C.success} />
   }
   function activityBg(type: string) {
-    if (type === 'writing') return 'rgba(55,48,163,.1)'
-    if (type === 'review') return 'rgba(245,158,11,.1)'
-    if (type === 'grammar') return 'rgba(124,58,237,.1)'
+    if (type === 'writing')   return 'rgba(55,48,163,.1)'
+    if (type === 'review')    return 'rgba(245,158,11,.1)'
+    if (type === 'grammar')   return 'rgba(124,58,237,.1)'
+    if (type === 'reading')   return 'rgba(55,48,163,.08)'
+    if (type === 'listening') return 'rgba(8,145,178,.1)'
+    if (type === 'chat')      return 'rgba(22,163,74,.1)'
     return 'rgba(22,163,74,.1)'
   }
 
+  const ta = progress?.today_activity ?? defaultActivity
+  const wordsDue = progress?.words_due ?? 0
   const planCards = [
-    { icon: <Icons.Layers size={18} color={C.primary} />, bg: 'rgba(55,48,163,.1)', title: 'Vocab Review', sub: `${progress?.words_due ?? 0} cards due`, fill: 0, fillColor: C.primary, onPress: () => navigation.navigate('Review') },
-    { icon: <Icons.MessageSquare size={18} color={C.success} />, bg: 'rgba(22,163,74,.1)', title: 'Conversation', sub: 'Practice German', fill: 0, fillColor: C.success, onPress: () => navigation.navigate('Chat') },
-    { icon: <Icons.Pencil size={18} color={C.accentD} />, bg: 'rgba(245,158,11,.1)', title: 'Grammar', sub: 'Grammar exercises', fill: 0, fillColor: C.accent, onPress: () => navigation.navigate('Grammar') },
-    { icon: <Icons.BookOpen size={18} color={C.primary} />, bg: 'rgba(55,48,163,.1)', title: 'Reading', sub: 'Immersive reading', fill: 0, fillColor: C.primary, onPress: () => navigation.navigate('Read') },
-    { icon: <Icons.Headphones size={18} color='#9333EA' />, bg: 'rgba(168,85,247,.1)', title: 'Shadowing', sub: 'Train pronunciation', fill: 0, fillColor: '#9333EA', onPress: () => navigation.navigate('Shadow') },
-    { icon: <Icons.Volume size={18} color='#0891B2' />, bg: 'rgba(8,145,178,.1)', title: 'Listening', sub: 'Comprehension exercises', fill: 0, fillColor: '#0891B2', onPress: () => navigation.navigate('Listen') },
+    { icon: <Icons.Layers size={18} color={C.primary} />, bg: 'rgba(55,48,163,.1)', title: 'Vocab Review', sub: wordsDue > 0 ? `${wordsDue} cards due` : 'All caught up!', fill: wordsDue > 0 ? Math.min(1, ta.vocab_reviews / wordsDue) : (ta.vocab_reviews > 0 ? 1 : 0), fillColor: C.primary, onPress: () => navigation.navigate('Review') },
+    { icon: <Icons.MessageSquare size={18} color={C.success} />, bg: 'rgba(22,163,74,.1)', title: 'Conversation', sub: ta.chat > 0 ? `${ta.chat} session${ta.chat > 1 ? 's' : ''} today` : 'Practice German', fill: Math.min(1, ta.chat), fillColor: C.success, onPress: () => navigation.navigate('Chat') },
+    { icon: <Icons.Pencil size={18} color={C.accentD} />, bg: 'rgba(245,158,11,.1)', title: 'Grammar', sub: ta.grammar > 0 ? `${ta.grammar} exercise${ta.grammar > 1 ? 's' : ''} today` : 'Grammar exercises', fill: Math.min(1, ta.grammar), fillColor: C.accent, onPress: () => navigation.navigate('Grammar') },
+    { icon: <Icons.BookOpen size={18} color={C.primary} />, bg: 'rgba(55,48,163,.1)', title: 'Reading', sub: ta.reading > 0 ? `${ta.reading} article${ta.reading > 1 ? 's' : ''} today` : 'Immersive reading', fill: Math.min(1, ta.reading), fillColor: C.primary, onPress: () => navigation.navigate('Read') },
+    { icon: <Icons.Headphones size={18} color='#9333EA' />, bg: 'rgba(168,85,247,.1)', title: 'Shadowing', sub: ta.shadowing > 0 ? `${ta.shadowing} session${ta.shadowing > 1 ? 's' : ''} today` : 'Train pronunciation', fill: Math.min(1, ta.shadowing), fillColor: '#9333EA', onPress: () => navigation.navigate('Shadow') },
+    { icon: <Icons.Volume size={18} color='#0891B2' />, bg: 'rgba(8,145,178,.1)', title: 'Listening', sub: ta.listening > 0 ? `${ta.listening} session${ta.listening > 1 ? 's' : ''} today` : 'Comprehension exercises', fill: Math.min(1, ta.listening), fillColor: '#0891B2', onPress: () => navigation.navigate('Listen') },
   ]
 
   return (
@@ -117,7 +132,7 @@ export function DashboardScreen() {
         <View style={s.sectionHeader}>
           <View>
             <Text style={[s.sectionTitle, { color: C.text }]}>Today's Plan</Text>
-            <Text style={[s.sectionSub, { color: C.text2 }]}>{progress?.words_due ?? 0} cards due</Text>
+            <Text style={[s.sectionSub, { color: C.text2 }]}>{wordsDue > 0 ? `${wordsDue} cards due` : 'All caught up!'}</Text>
           </View>
           <Text style={[s.sectionMeta, { color: C.text3 }]}>{progress?.mastery_score ?? 0}% mastery</Text>
         </View>

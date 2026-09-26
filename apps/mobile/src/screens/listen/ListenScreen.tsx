@@ -4,6 +4,7 @@ import {
   TouchableOpacity, View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useNavigation } from '@react-navigation/native'
 import * as Speech from 'expo-speech'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../lib/useAuth'
@@ -45,9 +46,13 @@ export function ListenScreen() {
   const { colors: C } = useTheme()
   const { isOnline } = useNetwork()
   const { getAccessToken } = useAuth()
+  const navigation = useNavigation()
 
-  // Picker state
+  // Hide nav header when in player/quiz/results so it doesn't clash with internal nav
   const [view, setView]             = useState<ScreenView>('picker')
+  useEffect(() => {
+    navigation.setOptions({ headerShown: view === 'picker' })
+  }, [view])
   const [tracks, setTracks]         = useState<Track[]>([])
   const [listLoading, setListLoading] = useState(true)
   const [levelFilter, setLevelFilter] = useState('All')
@@ -190,7 +195,7 @@ export function ListenScreen() {
       setSavingScore(true)
       try {
         const token = await getAccessToken()
-        const finalScore = selected === questions[qIdx]!.correct ? score + 1 : score
+        const finalScore = score
         await apiFetch('/api/listening/session', {
           method: 'POST',
           body: JSON.stringify({ article_id: article!.id, score: finalScore, total: questions.length }),
@@ -219,18 +224,11 @@ export function ListenScreen() {
   // ─────────────────────────────────────────────────────────────────────────────
   if (view === 'picker') {
     return (
-      <SafeAreaView style={[ls.container, { backgroundColor: C.bg }]} edges={['top']}>
+      <SafeAreaView style={[ls.container, { backgroundColor: C.bg }]} edges={['bottom']}>
         <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
-          {/* Header */}
-          <View style={ls.header}>
-            <View style={[ls.headerIcon, { backgroundColor: 'rgba(99,102,241,.1)' }]}>
-              <Icons.Headphones size={28} color={ACCENT} />
-            </View>
-            <Text style={[ls.headerTitle, { color: C.text }]}>Listening</Text>
-            <Text style={[ls.headerSub, { color: C.text3 }]}>
-              Pick a track, listen in German, then answer comprehension questions.
-            </Text>
-          </View>
+          <Text style={[ls.headerSub, { color: C.text3, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 }]}>
+            Pick a track, listen in German, then answer comprehension questions.
+          </Text>
 
           {!isOnline && <OfflineNotice message="Listening requires an internet connection to load tracks and generate questions." />}
 

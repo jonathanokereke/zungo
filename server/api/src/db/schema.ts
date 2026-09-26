@@ -144,6 +144,15 @@ export const user_deck_imports = pgTable('user_deck_imports', {
   imported_at: timestamp('imported_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+export const shadowing_sessions = pgTable('shadowing_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  article_id: uuid('article_id').references(() => articles.id, { onDelete: 'set null' }),
+  sentences_completed: integer('sentences_completed').notNull().default(0),
+  duration_seconds: integer('duration_seconds').notNull().default(0),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export const listening_sessions = pgTable('listening_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
   user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),

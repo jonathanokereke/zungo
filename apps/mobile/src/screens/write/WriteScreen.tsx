@@ -125,6 +125,7 @@ export function WriteScreen() {
             const clean = buffer.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim()
             const parsed = JSON.parse(clean) as Feedback
             setFeedback(parsed)
+            loadHistory()
             setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 200)
             resolve()
           } catch {

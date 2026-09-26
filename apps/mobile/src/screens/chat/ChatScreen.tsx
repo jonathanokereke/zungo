@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { FlatList, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useTheme } from '../../lib/ThemeContext'
@@ -6,6 +6,7 @@ import { Fonts } from '../../lib/theme'
 import { Icons } from '../../lib/icons'
 import { API_BASE, apiFetch } from '../../lib/api'
 import { useAuth } from '../../lib/useAuth'
+import { useNavigation } from '@react-navigation/native'
 import { useNetwork } from '../../lib/NetworkContext'
 import { OfflineNotice } from '../../components/OfflineNotice'
 
@@ -62,6 +63,7 @@ export function ChatScreen() {
   const { colors: C } = useTheme()
   const { isOnline } = useNetwork()
   const { getAccessToken } = useAuth()
+  const navigation = useNavigation()
   const [activeScenario, setActiveScenario] = useState(0)
   const [messages, setMessages] = useState<Message[]>([])
   const [userLevel, setUserLevel] = useState('B1')
@@ -76,6 +78,10 @@ export function ChatScreen() {
       apiFetch<{ user: { level: string } }>('/api/progress', {}, token)
     ).then(d => setUserLevel(d.user.level)).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    return navigation.addListener('blur', () => { saveCurrentSession() })
+  }, [navigation])
 
   async function loadOpening(scenarioIdx: number) {
     setMessages([])
@@ -95,7 +101,24 @@ export function ChatScreen() {
     } finally { setTyping(false) }
   }
 
+  async function saveCurrentSession() {
+    const msgs = conversationRef.current
+    if (msgs.length <= 1) return
+    try {
+      const token = await getAccessToken()
+      await apiFetch('/api/chat/sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          scenario: SCENARIOS[activeScenario]!.label,
+          messages: msgs,
+          message_count: msgs.length,
+        }),
+      }, token)
+    } catch {}
+  }
+
   function switchScenario(idx: number) {
+    saveCurrentSession()
     setActiveScenario(idx)
     loadOpening(idx)
   }

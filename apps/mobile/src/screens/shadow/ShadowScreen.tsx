@@ -4,6 +4,7 @@ import {
   TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useNavigation } from '@react-navigation/native'
 import * as Speech from 'expo-speech'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../lib/useAuth'
@@ -59,9 +60,13 @@ export function ShadowScreen() {
   const { colors: C } = useTheme()
   const { isOnline } = useNetwork()
   const { getAccessToken } = useAuth()
+  const navigation = useNavigation()
 
-  // Picker state
+  // Hide nav header when in player so it doesn't clash with the in-player top bar
   const [view, setView] = useState<ScreenView>('picker')
+  useEffect(() => {
+    navigation.setOptions({ headerShown: view === 'picker' })
+  }, [view])
   const [library, setLibrary] = useState<ArticleSummary[]>([])
   const [libraryLoading, setLibraryLoading] = useState(true)
   const [articleLoading, setArticleLoading] = useState(false)
@@ -125,13 +130,29 @@ export function ShadowScreen() {
     setSentenceIdx(0)
     setPlaying(false)
     setShadowPhase('idle')
+    sessionStartRef.current = Date.now()
     setView('player')
   }
+
+  const sessionStartRef = useRef<number>(0)
 
   function exitPlayer() {
     Speech.stop()
     clearTimer()
     setPlaying(false)
+    if (article && sentenceIdx > 0) {
+      const duration = Math.round((Date.now() - sessionStartRef.current) / 1000)
+      getAccessToken().then(token =>
+        apiFetch('/api/shadow/session', {
+          method: 'POST',
+          body: JSON.stringify({
+            article_id: article.id || undefined,
+            sentences_completed: sentenceIdx + 1,
+            duration_seconds: duration,
+          }),
+        }, token)
+      ).catch(() => {})
+    }
     setView('picker')
     setArticle(null)
   }
@@ -363,14 +384,9 @@ export function ShadowScreen() {
 
   // ── Picker view ──────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[sh.container, { backgroundColor: C.bg }]} edges={['top']}>
+    <SafeAreaView style={[sh.container, { backgroundColor: C.bg }]} edges={['bottom']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
-        {/* Header */}
         <View style={sh.pickerHeader}>
-          <View style={[sh.headerIconWrap, { backgroundColor: 'rgba(55,48,163,.1)' }]}>
-            <Icons.Headphones size={28} color={C.primary} />
-          </View>
-          <Text style={[sh.pickerTitle, { color: C.text }]}>Shadowing</Text>
           <Text style={[sh.pickerSubtitle, { color: C.text3 }]}>
             Hear native-speed German, then repeat each sentence to train your ear and pronunciation.
           </Text>
