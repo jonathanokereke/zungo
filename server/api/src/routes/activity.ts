@@ -133,15 +133,16 @@ export async function activityRoutes(app: FastifyInstance) {
         if (!reviewsByDay.has(day)) reviewsByDay.set(day, [])
         reviewsByDay.get(day)!.push(r)
       }
-      for (const [day, group] of reviewsByDay) {
+      for (const [_day, group] of reviewsByDay) {
         const passed = group.filter(r => r.review.repetition > 0).length
         const pct = Math.round((passed / group.length) * 100)
+        const latestTs = Math.max(...group.map(r => new Date(r.review.last_reviewed_at!).getTime()))
         items.push({
           type: 'review',
           title: `Vocab — ${group.length} cards reviewed`,
           sub: `${pct}% retention · ${group.length} cards`,
-          time: timeAgo(new Date(day)),
-          ts: new Date(day).getTime(),
+          time: timeAgo(new Date(latestTs)),
+          ts: latestTs,
         })
       }
     }
