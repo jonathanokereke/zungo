@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#12105A"
+      "backgroundColor": "#3730A3"
     },
     "ios": {
       "supportsTablet": true,
@@ -31,7 +31,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#12105A"
+        "backgroundColor": "#3730A3"
       },
       "package": "com.zungo.app"
     },
