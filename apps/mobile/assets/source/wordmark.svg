@@ -1,24 +1,18 @@
-<svg width="640" height="160" viewBox="0 0 640 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Bubble: rounded rect ~x4 y4 w152 h120 rx36, bottom edge y=124 -->
-  <!-- Tail: base x16–x64 on bottom, tip x8 y156 -->
-  <path d="
-    M40,4
-    Q4,4 4,40
-    L4,88
-    Q4,124 40,124
-    L20,124
-    L6,156
-    L68,124
-    L120,124
-    Q156,124 156,88
-    L156,40
-    Q156,4 120,4
-    Z
-  " fill="#3730A3"/>
-  <!-- Z: equal spans, proportional to icon. Top x28→x132 y36, bottom x28→x132 y92 (104px spans) -->
-  <path d="M28 36 L132 36 L28 92 L132 92"
-        stroke="white" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <circle cx="132" cy="92" r="16" fill="#F59E0B"/>
-  <!-- Wordmark text -->
-  <text x="176" y="104" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="72" fill="#1E1B4B" letter-spacing="-2">zungo</text>
+<svg width="1320" height="440" viewBox="0 0 132 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Zungo wordmark — canonical geometry
+    Bubble: rect region x2–x38 y2–y30 rx8. Tail base x6–x17 on y=30. Tip x4 y42.
+    Z: equal 13px spans. Top x12→x25 y10. Bottom x12→x25 y22.
+    Amber dot at (25,22). Text "zungo" at x48.
+  -->
+  <path
+    d="M10,2 Q2,2 2,10 L2,22 Q2,30 10,30 L6,30 L4,42 L17,30 L30,30 Q38,30 38,22 L38,10 Q38,2 30,2 Z"
+    fill="#3730A3"/>
+  <path
+    d="M12 10 L25 10 L12 22 L25 22"
+    stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="25" cy="22" r="2.1" fill="#F59E0B"/>
+  <text x="48" y="26"
+    font-family="Inter, system-ui, sans-serif"
+    font-weight="800" font-size="20" fill="#1E1B4B" letter-spacing="-0.5">zungo</text>
 </svg>
