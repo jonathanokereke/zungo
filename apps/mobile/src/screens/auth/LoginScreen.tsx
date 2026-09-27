@@ -105,7 +105,7 @@ const s = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 18,
     alignItems: 'center',
-    backgroundColor: NAVY,
+    backgroundColor: '#3730A3',
   },
   loginBtnText: { fontSize: 17, fontFamily: Fonts.semibold, color: '#FFFFFF' },
   errorText: { fontSize: 14, fontFamily: Fonts.regular, textAlign: 'center', color: '#EF4444' },
