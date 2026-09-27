@@ -31,7 +31,8 @@ export function LoginScreen() {
   return (
     <SafeAreaView style={s.container}>
       <View style={s.hero}>
-        <ZungoLogo variant="wordmark" scheme="light" size={52} />
+        <ZungoLogo variant="icon" scheme="light" size={84} />
+        <Text style={s.logoName}>Zungo</Text>
         <View style={s.divider} />
         <Text style={s.headline}>German fluency,{'\n'}the smart way.</Text>
         <Text style={s.tagline}>
@@ -68,6 +69,14 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 32,
     gap: 0,
+  },
+  logoName: {
+    fontSize: 32,
+    fontFamily: Fonts.bold,
+    color: NAVY,
+    letterSpacing: -0.5,
+    marginTop: 10,
+    marginBottom: 14,
   },
   divider: {
     width: 40,

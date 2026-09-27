@@ -49,7 +49,9 @@ export function WelcomeScreen() {
     <SafeAreaView style={s.container}>
       {/* Header */}
       <View style={s.header}>
-        <ZungoLogo variant="wordmark" scheme="light" size={48} />
+        <ZungoLogo variant="icon" scheme="light" size={72} />
+        <Text style={s.logoName}>Zungo</Text>
+        <View style={s.logoDivider} />
         <Text style={s.headerSub}>Here's what makes Zungo different</Text>
       </View>
 
@@ -102,6 +104,8 @@ const s = StyleSheet.create({
 
   // Header
   header: { alignItems: 'center', paddingTop: 32, paddingBottom: 20, paddingHorizontal: 28 },
+  logoName: { fontSize: 26, fontFamily: Fonts.bold, color: NAVY, letterSpacing: -0.5, marginTop: 8, marginBottom: 10 },
+  logoDivider: { width: 36, height: 3, backgroundColor: '#F59E0B', borderRadius: 2, marginBottom: 10 },
   headerSub: { fontSize: 14, fontFamily: Fonts.regular, color: '#6B7280' },
 
   // Cards
