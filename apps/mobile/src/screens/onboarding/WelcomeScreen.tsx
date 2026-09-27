@@ -6,11 +6,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Fonts } from '../../lib/theme'
 import { LayersIcon, PenLineIcon, BarChart2Icon } from '../../lib/icons'
 import type { OnboardingStackParamList } from '../../navigation/OnboardingNavigator'
+import { ZungoLogo } from '../../components/ZungoLogo'
 
 type Nav = NativeStackNavigationProp<OnboardingStackParamList, 'Welcome'>
 
 const NAVY        = '#12105A'
-const AMBER       = '#F59E0B'
 const CARD_BG     = '#EAECF6'
 const ICON_COLOR  = '#111059'
 const OFF_WHITE   = '#F9F8F6'
@@ -49,10 +49,7 @@ export function WelcomeScreen() {
     <SafeAreaView style={s.container}>
       {/* Header */}
       <View style={s.header}>
-        <View style={s.logoMark}>
-          <Text style={s.logoZ}>Z</Text>
-        </View>
-        <Text style={s.logoName}>Zungo</Text>
+        <ZungoLogo variant="wordmark" scheme="light" size={48} />
         <Text style={s.headerSub}>Here's what makes Zungo different</Text>
       </View>
 
@@ -105,17 +102,6 @@ const s = StyleSheet.create({
 
   // Header
   header: { alignItems: 'center', paddingTop: 32, paddingBottom: 20, paddingHorizontal: 28 },
-  logoMark: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    backgroundColor: NAVY,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  logoZ:     { fontSize: 36, fontFamily: Fonts.bold, color: AMBER, fontStyle: 'italic' },
-  logoName:  { fontSize: 26, fontFamily: Fonts.bold, color: NAVY, letterSpacing: -0.5, marginBottom: 4 },
   headerSub: { fontSize: 14, fontFamily: Fonts.regular, color: '#6B7280' },
 
   // Cards

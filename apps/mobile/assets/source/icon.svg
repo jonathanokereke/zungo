@@ -1,0 +1,24 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Speech bubble as single path, bottom-left tail -->
+  <!-- Bubble body: rounded rect ~x80 y80 w864 h700 rx196 -->
+  <!-- Tail: base x80–x280 on bottom (y=780), tip at x40 y960 -->
+  <path d="
+    M276,80
+    Q80,80 80,276
+    L80,584
+    Q80,780 276,780
+    L160,780
+    L40,970
+    L320,780
+    L748,780
+    Q944,780 944,584
+    L944,276
+    Q944,80 748,80
+    Z
+  " fill="#3730A3"/>
+  <!-- Z: top x296→x728 y280, bottom x296→x728 y560, equal 432px spans -->
+  <path d="M296 280 L728 280 L296 560 L728 560"
+        stroke="white" stroke-width="88" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Amber dot at Z bottom-right terminal -->
+  <circle cx="728" cy="560" r="64" fill="#F59E0B"/>
+</svg>

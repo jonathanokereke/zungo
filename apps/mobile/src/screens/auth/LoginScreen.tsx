@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useState } from 'react'
 import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
+import { ZungoLogo } from '../../components/ZungoLogo'
 
 const OFF_WHITE = '#F9F8F6'
 const NAVY = '#12105A'
@@ -30,10 +31,7 @@ export function LoginScreen() {
   return (
     <SafeAreaView style={s.container}>
       <View style={s.hero}>
-        <View style={s.logoMark}>
-          <Text style={s.logoZ}>Z</Text>
-        </View>
-        <Text style={s.logoName}>Zungo</Text>
+        <ZungoLogo variant="wordmark" scheme="light" size={52} />
         <View style={s.divider} />
         <Text style={s.headline}>German fluency,{'\n'}the smart way.</Text>
         <Text style={s.tagline}>
@@ -70,23 +68,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 32,
     gap: 0,
-  },
-  logoMark: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: NAVY,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  logoZ: { fontSize: 40, fontFamily: Fonts.bold, color: AMBER, fontStyle: 'italic' },
-  logoName: {
-    fontSize: 32,
-    fontFamily: Fonts.bold,
-    color: NAVY,
-    letterSpacing: -0.5,
-    marginBottom: 28,
   },
   divider: {
     width: 40,

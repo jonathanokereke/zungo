@@ -1,0 +1,24 @@
+<svg width="640" height="160" viewBox="0 0 640 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bubble: rounded rect ~x4 y4 w152 h120 rx36, bottom edge y=124 -->
+  <!-- Tail: base x16–x64 on bottom, tip x8 y156 -->
+  <path d="
+    M40,4
+    Q4,4 4,40
+    L4,88
+    Q4,124 40,124
+    L20,124
+    L6,156
+    L68,124
+    L120,124
+    Q156,124 156,88
+    L156,40
+    Q156,4 120,4
+    Z
+  " fill="#3730A3"/>
+  <!-- Z: equal spans, proportional to icon. Top x28→x132 y36, bottom x28→x132 y92 (104px spans) -->
+  <path d="M28 36 L132 36 L28 92 L132 92"
+        stroke="white" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="132" cy="92" r="16" fill="#F59E0B"/>
+  <!-- Wordmark text -->
+  <text x="176" y="104" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="72" fill="#1E1B4B" letter-spacing="-2">zungo</text>
+</svg>
