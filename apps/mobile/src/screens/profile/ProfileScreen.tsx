@@ -9,7 +9,7 @@ import { Icons } from '../../lib/icons'
 import { requestPermissionsAndScheduleReminder } from '../../lib/notifications'
 
 interface ProgressData { total_words: number; user: { level: string; streak: number } }
-interface Prefs { onboarding_complete?: boolean; daily_goal_minutes?: number; reminder_hour?: number; reminder_minute?: number }
+interface Prefs { onboarding_complete?: boolean; daily_goal_minutes?: number; reminder_hour?: number; reminder_minute?: number; auto_correct?: boolean; offline_mode?: boolean }
 interface UserMe { name: string; preferred_name: string; email: string; preferences_json?: Prefs | null }
 
 export function ProfileScreen() {
@@ -94,6 +94,12 @@ export function ProfileScreen() {
   const [autoCorrect, setAutoCorrect] = useState(true)
   const [offlineMode, setOfflineMode] = useState(false)
 
+  // Sync toggle state from loaded prefs
+  useEffect(() => {
+    setAutoCorrect(userPrefs.auto_correct !== false)
+    setOfflineMode(userPrefs.offline_mode === true)
+  }, [userPrefs.auto_correct, userPrefs.offline_mode])
+
   const reminderTime = (() => {
     const h = userPrefs.reminder_hour ?? 19
     const m = userPrefs.reminder_minute ?? 0
@@ -103,10 +109,21 @@ export function ProfileScreen() {
   const toggleMap: Record<string, [boolean, (v: boolean) => void]> = {
     'Daily Reminder': [dailyReminder, (v) => {
       setDailyReminder(v)
-      if (v) savePrefs({})
+      if (v) {
+        const h = userPrefs.reminder_hour ?? 19
+        const m = userPrefs.reminder_minute ?? 0
+        requestPermissionsAndScheduleReminder(h, m).catch(() => {})
+        savePrefs({})
+      }
     }],
-    'Auto-correct': [autoCorrect, setAutoCorrect],
-    'Offline Mode': [offlineMode, setOfflineMode],
+    'Auto-correct': [autoCorrect, (v) => {
+      setAutoCorrect(v)
+      savePrefs({ auto_correct: v })
+    }],
+    'Offline Mode': [offlineMode, (v) => {
+      setOfflineMode(v)
+      savePrefs({ offline_mode: v })
+    }],
   }
 
   const level = profileData?.user.level ?? '…'

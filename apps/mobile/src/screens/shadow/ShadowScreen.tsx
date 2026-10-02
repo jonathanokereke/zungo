@@ -362,16 +362,8 @@ export function ShadowScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[sh.replayBtn, { opacity: isLast ? 0.3 : 1 }]}
-              onPress={handleNext}
-              disabled={isLast}
-            >
-              <Icons.ChevronRight size={24} color={C.text2} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={[sh.transpBtn, { opacity: isLast ? 0.3 : 1 }]}
-              onPress={() => { if (!isLast) { setSentenceIdx(i => i + 1); setPlaying(false); setShadowPhase('idle') } }}
+              onPress={handleNext}
               disabled={isLast}
             >
               <Icons.ChevronRight size={24} color={C.text2} />

@@ -35,26 +35,41 @@ export function VocabularyScreen() {
   const route = useRoute<NativeStackScreenProps<RootStackParamList, 'Vocabulary'>['route']>()
   const initialPos = route.params?.pos ?? null
 
+  const PAGE_SIZE = 200
   const [words, setWords] = useState<Word[]>([])
   const [totalCount, setTotalCount] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<string | null>(initialPos)
   const [deleting, setDeleting] = useState<string | null>(null)
 
-  async function loadWords(activeFilter: string | null = filter) {
-    setLoading(true)
+  const [page, setPage] = useState(1)
+
+  async function loadWords(activeFilter: string | null = filter, nextPage = 1, append = false) {
+    if (nextPage === 1) setLoading(true); else setLoadingMore(true)
     try {
       const token = await getAccessToken()
-      // When browsing by type, use server-side pos filter to get ALL words of that type
-      // When no filter, fetch the most recent 200 for the general browse view
       const url = activeFilter
         ? `/api/words?pos=${encodeURIComponent(activeFilter)}`
-        : '/api/words?limit=200'
+        : `/api/words?limit=${PAGE_SIZE}&page=${nextPage}`
       const result = await apiFetch<Word[]>(url, {}, token)
-      setWords(result)
-      setTotalCount(result.length)
-    } catch {} finally { setLoading(false) }
+      if (append) {
+        setWords(prev => [...prev, ...result])
+      } else {
+        setWords(result)
+        setPage(1)
+      }
+      setTotalCount(prev => append ? prev + result.length : result.length)
+      setHasMore(!activeFilter && result.length === PAGE_SIZE)
+    } catch {} finally { setLoading(false); setLoadingMore(false) }
+  }
+
+  async function loadMore() {
+    const next = page + 1
+    setPage(next)
+    await loadWords(filter, next, true)
   }
 
   useEffect(() => { loadWords(initialPos) }, [])
@@ -84,7 +99,7 @@ export function VocabularyScreen() {
 
   function setFilterAndReload(pos: string | null) {
     setFilter(pos)
-    loadWords(pos)
+    loadWords(pos, 1, false)
   }
 
   const allPos = [...new Set(words.map(w => w.part_of_speech))].sort()
@@ -236,6 +251,17 @@ export function VocabularyScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100, gap: 8, paddingTop: 8 }}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: 0 }} />}
+          ListFooterComponent={hasMore && !search ? (
+            <TouchableOpacity
+              style={[vc.loadMoreBtn, { borderColor: C.border }]}
+              onPress={loadMore}
+              disabled={loadingMore}
+            >
+              {loadingMore
+                ? <ActivityIndicator size="small" color={C.primary} />
+                : <Text style={[vc.loadMoreText, { color: C.primary }]}>Load more</Text>}
+            </TouchableOpacity>
+          ) : null}
         />
       )}
     </SafeAreaView>
@@ -268,4 +294,6 @@ const vc = StyleSheet.create({
   emptySubtitle: { fontSize: 13, fontFamily: Fonts.regular, marginTop: 8, textAlign: 'center', lineHeight: 20 },
   readBtn: { marginTop: 20, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 },
   readBtnText: { color: '#FFFFFF', fontFamily: Fonts.semibold, fontSize: 15 },
+  loadMoreBtn: { marginTop: 8, marginBottom: 12, borderWidth: 1.5, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  loadMoreText: { fontSize: 14, fontFamily: Fonts.semibold },
 })

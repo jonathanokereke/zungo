@@ -143,17 +143,18 @@ export function ReadScreen() {
   }
 
   async function finishSession(wordsLookedUp: number) {
-    if (!article || !article.id) return
+    if (!article) return
     try {
       const token = await getAccessToken()
       await apiFetch('/api/reading/sessions', {
         method: 'POST',
         body: JSON.stringify({
-          title: article.title,
+          title: article.title || 'Custom text',
           level: article.level as CefrLevel,
-          topic: article.topic,
+          topic: article.topic || 'Custom',
           words_looked_up: wordsLookedUp,
           duration_seconds: Math.floor((Date.now() - sessionStart) / 1000),
+          ...(article.id ? { article_id: article.id } : {}),
         }),
       }, token)
     } catch { /* non-fatal */ }

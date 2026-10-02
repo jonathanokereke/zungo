@@ -146,9 +146,7 @@ export function ReviewScreen() {
           </View>
           <Text style={[rv.progressText, { color: C.text3 }]}>{idx + 1} of {cards.length}</Text>
         </View>
-        <TouchableOpacity style={rv.settingsBtn}>
-          <Icons.Settings size={18} color={C.text3} />
-        </TouchableOpacity>
+        <View style={rv.settingsBtn} />
       </View>
 
       <View style={rv.dots}>
@@ -194,12 +192,6 @@ export function ReviewScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          <TouchableOpacity style={rv.audioEditBtn}>
-            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-              <Icons.Volume size={14} color={C.text3} />
-              <Text style={[rv.audioEditText, { color: C.text3 }]}>Play audio  ·  Edit card</Text>
-            </View>
-          </TouchableOpacity>
         </>
       )}
     </SafeAreaView>

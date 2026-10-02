@@ -126,14 +126,14 @@ export function ListenScreen() {
   }
 
   // ── Play / pause ────────────────────────────────────────────────────────────
-  function startPlayback() {
+  function startPlayback(fromStart = false) {
     if (!article) return
     const sentences = sentencesRef.current
     if (sentences.length === 0) return
     const rate = SPEEDS[speedIdx]!.rate
 
     setPlaying(true)
-    sentenceIdxRef.current = 0
+    if (fromStart) sentenceIdxRef.current = 0
 
     function speakNext() {
       const idx = sentenceIdxRef.current
@@ -171,13 +171,13 @@ export function ListenScreen() {
   }
 
   function changeSpeed(idx: number) {
+    const wasPlaying = playing
     setSpeedIdx(idx)
-    if (playing) {
+    if (wasPlaying) {
       Speech.stop()
       setPlaying(false)
-      setFinished(false)
-      setPlayProgress(0)
-      sentenceIdxRef.current = 0
+      // Resume from current position with new speed after a brief tick
+      setTimeout(() => startPlayback(false), 80)
     }
   }
 
@@ -379,7 +379,7 @@ export function ListenScreen() {
 
                   <TouchableOpacity
                     style={[ls.playBtn, { backgroundColor: ACCENT }]}
-                    onPress={playing ? pausePlayback : startPlayback}
+                    onPress={playing ? pausePlayback : () => startPlayback(playProgress === 0)}
                     disabled={finished}
                   >
                     {playing
