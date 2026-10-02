@@ -10,20 +10,20 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#3730A3"
+      "backgroundColor": "#1E1B4B"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.zungo.app",
+      "bundleIdentifier": "com.zungo-dev.app",
       "infoPlist": {
         "CFBundleURLTypes": [
           {
             "CFBundleURLName": "app",
-            "CFBundleURLSchemes": ["com.zungo.app", "zungo"]
+            "CFBundleURLSchemes": ["com.zungo-dev.app", "zungo"]
           },
           {
             "CFBundleURLName": "auth0",
-            "CFBundleURLSchemes": ["com.zungo.app.auth0"]
+            "CFBundleURLSchemes": ["com.zungo-dev.app.auth0"]
           }
         ]
       }

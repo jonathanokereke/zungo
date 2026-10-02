@@ -41,7 +41,7 @@ export function ZungoLogo({ variant = 'icon', scheme = 'dark', size }: Props) {
             Tail base: x10–x22 on y=40. Tip: x7 y51.
           */}
           <Path
-            d="M14,4 Q4,4 4,14 L4,30 Q4,40 14,40 L10,40 L7,51 L22,40 L38,40 Q48,40 48,30 L48,14 Q48,4 38,4 Z"
+            d="M14,4 Q4,4 4,14 L4,34 Q4,40 10,40 L13,46 L22,40 L38,40 Q48,40 48,30 L48,14 Q48,4 38,4 Z"
             fill={INDIGO}
           />
           {/*
@@ -77,7 +77,7 @@ export function ZungoLogo({ variant = 'icon', scheme = 'dark', size }: Props) {
           Same single-path, seamless approach.
         */}
         <Path
-          d="M10,2 Q2,2 2,10 L2,22 Q2,30 10,30 L6,30 L4,42 L17,30 L30,30 Q38,30 38,22 L38,10 Q38,2 30,2 Z"
+          d="M10,2 Q2,2 2,10 L2,24 Q2,30 7,30 L10,35 L17,30 L30,30 Q38,30 38,22 L38,10 Q38,2 30,2 Z"
           fill={INDIGO}
         />
         {/*

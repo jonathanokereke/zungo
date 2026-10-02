@@ -1,12 +1,12 @@
 <svg width="1320" height="440" viewBox="0 0 132 44" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!--
     Zungo wordmark — canonical geometry
-    Bubble: rect region x2–x38 y2–y30 rx8. Tail base x6–x17 on y=30. Tip x4 y42.
+    Bubble: rect region x2–x38 y2–y30 rx8. Tail: left side to y24, corner to (7,30), tip (10,35), right base x17.
     Z: equal 13px spans. Top x12→x25 y10. Bottom x12→x25 y22.
     Amber dot at (25,22). Text "zungo" at x48.
   -->
   <path
-    d="M10,2 Q2,2 2,10 L2,22 Q2,30 10,30 L6,30 L4,42 L17,30 L30,30 Q38,30 38,22 L38,10 Q38,2 30,2 Z"
+    d="M10,2 Q2,2 2,10 L2,24 Q2,30 7,30 L10,35 L17,30 L30,30 Q38,30 38,22 L38,10 Q38,2 30,2 Z"
     fill="#3730A3"/>
   <path
     d="M12 10 L25 10 L12 22 L25 22"
