@@ -36,13 +36,6 @@
       "package": "com.zungo.app"
     },
     "plugins": [
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#3730A3"
-        }
-      ],
       "expo-font",
       "expo-router",
       "./plugins/withFmtCpp17"
