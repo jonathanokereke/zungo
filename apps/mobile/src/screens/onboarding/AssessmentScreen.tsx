@@ -10,7 +10,7 @@ import type { OnboardingStackParamList } from '../../navigation/OnboardingNaviga
 
 type Nav = NativeStackNavigationProp<OnboardingStackParamList, 'Assessment'>
 type Route = RouteProp<OnboardingStackParamList, 'Assessment'>
-type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2'
+type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
 
 const QUIZ: { level: CefrLevel; sentence: string; options: { text: string; correct: boolean }[] }[] = [
   {
@@ -93,9 +93,51 @@ const QUIZ: { level: CefrLevel; sentence: string; options: { text: string; corre
       { text: 'den', correct: false },
     ],
   },
+  {
+    level: 'C1',
+    sentence: 'Die neue Regelung tritt in Kraft, ___ der Bundesrat zugestimmt hat.',
+    options: [
+      { text: 'sobald', correct: true },
+      { text: 'indem', correct: false },
+      { text: 'wobei', correct: false },
+      { text: 'zumal', correct: false },
+    ],
+  },
+  {
+    level: 'C1',
+    sentence: 'Die Forschungsergebnisse legen nahe, dass das Modell einer grundlegenden ___ bedarf.',
+    options: [
+      { text: 'Überarbeitung', correct: true },
+      { text: 'Überarbeite', correct: false },
+      { text: 'Überarbeitungen', correct: false },
+      { text: 'Überarbeitend', correct: false },
+    ],
+  },
+  {
+    level: 'C2',
+    sentence: '___ man auch darüber denken mag, die Konsequenzen sind nicht zu unterschätzen.',
+    options: [
+      { text: 'Was', correct: true },
+      { text: 'Wie', correct: false },
+      { text: 'Wer', correct: false },
+      { text: 'Womit', correct: false },
+    ],
+  },
+  {
+    level: 'C2',
+    sentence: 'Er verhielt sich so, als ___ er von der Sache nicht das Geringste gewusst.',
+    options: [
+      { text: 'hätte', correct: true },
+      { text: 'hatte', correct: false },
+      { text: 'würde', correct: false },
+      { text: 'habe', correct: false },
+    ],
+  },
 ]
 
 function scoreToLevel(score: number): CefrLevel {
+  if (score >= 11) return 'C2'
+  if (score >= 9) return 'C1'
   if (score >= 7) return 'B2'
   if (score >= 5) return 'B1'
   if (score >= 3) return 'A2'
@@ -203,6 +245,8 @@ const LEVEL_DESCRIPTIONS: Record<CefrLevel, string> = {
   A2: "You know the basics. We'll build on your foundation with common phrases.",
   B1: 'Solid intermediate level. You can handle real-world German conversations.',
   B2: "Upper intermediate. You're ready for complex vocabulary and nuanced expression.",
+  C1: 'Advanced level. You can express yourself fluently and use German spontaneously.',
+  C2: 'Near-native proficiency. You can understand virtually everything in German.',
 }
 
 const s = StyleSheet.create({

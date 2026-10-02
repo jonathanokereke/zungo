@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { FlatList, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useTheme } from '../../lib/ThemeContext'
 import { Fonts } from '../../lib/theme'
@@ -41,6 +41,12 @@ interface Message {
   time: string
   corrections?: Correction[]
 }
+interface ChatSession {
+  id: string
+  scenario: string
+  message_count: number
+  created_at: string
+}
 
 function now() {
   const d = new Date()
@@ -71,6 +77,11 @@ export function ChatScreen() {
   const [typing, setTyping] = useState(false)
   const flatRef = useRef<FlatList>(null)
   const conversationRef = useRef<{ role: 'user' | 'assistant'; text: string }[]>([])
+
+  // History
+  const [historyVisible, setHistoryVisible] = useState(false)
+  const [sessions, setSessions] = useState<ChatSession[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
 
   useEffect(() => {
     loadOpening(0)
@@ -115,6 +126,20 @@ export function ChatScreen() {
         }),
       }, token)
     } catch {}
+  }
+
+  async function openHistory() {
+    setHistoryVisible(true)
+    setSessionsLoading(true)
+    try {
+      const token = await getAccessToken()
+      const data = await apiFetch<ChatSession[]>('/api/chat/sessions', {}, token)
+      setSessions(data)
+    } catch {
+      setSessions([])
+    } finally {
+      setSessionsLoading(false)
+    }
   }
 
   function switchScenario(idx: number) {
@@ -265,10 +290,16 @@ export function ChatScreen() {
               <Text style={[ms.agentStatus, { color: C.success }]}>Live · {userLevel} mode</Text>
             </View>
           </View>
-          <TouchableOpacity style={[ms.newScenarioBtn, { backgroundColor: C.bgAlt, borderColor: C.border }]} onPress={() => switchScenario(activeScenario)}>
-            <Icons.Refresh size={12} color={C.text2} />
-            <Text style={[ms.newScenarioBtnText, { color: C.text2 }]}>Restart</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity style={[ms.newScenarioBtn, { backgroundColor: C.bgAlt, borderColor: C.border }]} onPress={openHistory}>
+              <Icons.BookOpen size={12} color={C.text2} />
+              <Text style={[ms.newScenarioBtnText, { color: C.text2 }]}>History</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[ms.newScenarioBtn, { backgroundColor: C.bgAlt, borderColor: C.border }]} onPress={() => switchScenario(activeScenario)}>
+              <Icons.Refresh size={12} color={C.text2} />
+              <Text style={[ms.newScenarioBtnText, { color: C.text2 }]}>Restart</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Messages */}
@@ -318,6 +349,47 @@ export function ChatScreen() {
         </View>
 
       </KeyboardAvoidingView>
+
+      {/* History Modal */}
+      <Modal visible={historyVisible} transparent animationType="slide" onRequestClose={() => setHistoryVisible(false)}>
+        <TouchableOpacity style={ms.historyOverlay} activeOpacity={1} onPress={() => setHistoryVisible(false)}>
+          <View style={[ms.historySheet, { backgroundColor: C.surface }]} onStartShouldSetResponder={() => true}>
+            <View style={[ms.historyHandle, { backgroundColor: C.border }]} />
+            <Text style={[ms.historyTitle, { color: C.text }]}>Chat History</Text>
+            {sessionsLoading ? (
+              <View style={ms.historyCenter}>
+                <ActivityIndicator color={C.primary} />
+              </View>
+            ) : sessions.length === 0 ? (
+              <View style={ms.historyCenter}>
+                <Icons.MessageSquare size={36} color={C.border} />
+                <Text style={[ms.historyEmpty, { color: C.text3 }]}>No saved sessions yet</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={sessions}
+                keyExtractor={s => s.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingBottom: 20 }}
+                renderItem={({ item }) => {
+                  const date = new Date(item.created_at)
+                  const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                  const scenario = SCENARIOS.find(sc => sc.label === item.scenario)
+                  return (
+                    <View style={[ms.sessionRow, { backgroundColor: C.bg, borderColor: C.border }]}>
+                      <Text style={{ fontSize: 24 }}>{scenario?.emoji ?? '💬'}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[ms.sessionScenario, { color: C.text }]}>{item.scenario}</Text>
+                        <Text style={[ms.sessionMeta, { color: C.text3 }]}>{item.message_count} messages · {dateStr}</Text>
+                      </View>
+                    </View>
+                  )
+                }}
+              />
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -356,4 +428,13 @@ const ms = StyleSheet.create({
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingHorizontal: 16, paddingBottom: 12, paddingTop: 8, borderTopWidth: 1 },
   input: { flex: 1, borderRadius: 22, borderWidth: 1.5, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, fontFamily: Fonts.regular, maxHeight: 120, lineHeight: 20 },
   sendBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  historyOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,.45)' },
+  historySheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '70%' },
+  historyHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  historyTitle: { fontSize: 20, fontFamily: Fonts.bold, marginBottom: 16 },
+  historyCenter: { alignItems: 'center', paddingVertical: 32, gap: 12 },
+  historyEmpty: { fontSize: 14, fontFamily: Fonts.regular },
+  sessionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: 1, padding: 14 },
+  sessionScenario: { fontSize: 15, fontFamily: Fonts.semibold },
+  sessionMeta: { fontSize: 12, fontFamily: Fonts.regular, marginTop: 2 },
 })

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator, ScrollView, StyleSheet, Text,
-  TextInput, TouchableOpacity, View,
+  TextInput, TouchableOpacity, View, Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import * as Speech from 'expo-speech'
+import { Audio } from 'expo-av'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
@@ -86,9 +87,22 @@ export function ShadowScreen() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollRef = useRef<ScrollView>(null)
 
+  // Recording state (shadow mode)
+  const [recording, setRecording] = useState<Audio.Recording | null>(null)
+  const [recordingUri, setRecordingUri] = useState<string | null>(null)
+  const [playbackSound, setPlaybackSound] = useState<Audio.Sound | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [micGranted, setMicGranted] = useState<boolean | null>(null)
+
   useEffect(() => {
     loadLibrary()
-    return () => { Speech.stop(); clearTimer() }
+    Audio.requestPermissionsAsync().then(({ granted }) => setMicGranted(granted))
+    return () => {
+      Speech.stop()
+      clearTimer()
+      recording?.stopAndUnloadAsync().catch(() => {})
+      playbackSound?.unloadAsync().catch(() => {})
+    }
   }, [])
 
   function clearTimer() {
@@ -175,8 +189,11 @@ export function ShadowScreen() {
         if (currentMode === 'shadow') {
           // After listening, give user time to shadow (same duration)
           setShadowPhase('shadowing')
+          setRecordingUri(null)
+          startRecording()
           const wait = estimateDuration(sentence, currentSpeed) * 1.5
           timerRef.current = setTimeout(() => {
+            stopRecording()
             setShadowPhase('idle')
             setPlaying(false)
           }, wait)
@@ -193,22 +210,24 @@ export function ShadowScreen() {
     if (playing) {
       Speech.stop()
       clearTimer()
+      stopRecording()
       setPlaying(false)
       setShadowPhase('idle')
     } else {
+      setRecordingUri(null)
       speakCurrent(sentenceIdx, speed, mode)
     }
   }
 
   function handlePrev() {
-    Speech.stop(); clearTimer()
-    setPlaying(false); setShadowPhase('idle')
+    Speech.stop(); clearTimer(); stopRecording()
+    setPlaying(false); setShadowPhase('idle'); setRecordingUri(null)
     setSentenceIdx(i => Math.max(0, i - 1))
   }
 
   function handleNext() {
-    Speech.stop(); clearTimer()
-    setPlaying(false); setShadowPhase('idle')
+    Speech.stop(); clearTimer(); stopRecording()
+    setPlaying(false); setShadowPhase('idle'); setRecordingUri(null)
     setSentenceIdx(i => Math.min(sentences.length - 1, i + 1))
   }
 
@@ -228,6 +247,49 @@ export function ShadowScreen() {
     setMode(m)
     Speech.stop(); clearTimer()
     setPlaying(false); setShadowPhase('idle')
+    stopRecording()
+    setRecordingUri(null)
+  }
+
+  async function startRecording() {
+    if (!micGranted) {
+      const { granted } = await Audio.requestPermissionsAsync()
+      setMicGranted(granted)
+      if (!granted) { Alert.alert('Microphone access needed', 'Allow microphone access in Settings to record yourself.'); return }
+    }
+    try {
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true })
+      const { recording: rec } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY)
+      setRecording(rec)
+      setRecordingUri(null)
+    } catch {}
+  }
+
+  async function stopRecording() {
+    if (!recording) return
+    try {
+      await recording.stopAndUnloadAsync()
+      const uri = recording.getURI()
+      setRecordingUri(uri)
+      setRecording(null)
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false })
+    } catch { setRecording(null) }
+  }
+
+  async function playRecording() {
+    if (!recordingUri) return
+    if (isPlaying && playbackSound) {
+      await playbackSound.stopAsync()
+      setIsPlaying(false)
+      return
+    }
+    playbackSound?.unloadAsync()
+    const { sound } = await Audio.Sound.createAsync({ uri: recordingUri }, { shouldPlay: true })
+    setPlaybackSound(sound)
+    setIsPlaying(true)
+    sound.setOnPlaybackStatusUpdate(status => {
+      if (status.isLoaded && status.didJustFinish) { setIsPlaying(false) }
+    })
   }
 
   // ── Player view ──────────────────────────────────────────────────────────────
@@ -301,8 +363,11 @@ export function ShadowScreen() {
           }]}>
             {shadowPhase === 'shadowing' ? (
               <View style={sh.shadowingIndicator}>
-                <Icons.Mic size={20} color={C.accent} />
-                <Text style={[sh.shadowingLabel, { color: C.accent }]}>Your turn — repeat the sentence</Text>
+                <View style={[sh.recDot, { backgroundColor: recording ? '#EF4444' : C.border }]} />
+                <Icons.Mic size={20} color={recording ? '#EF4444' : C.accent} />
+                <Text style={[sh.shadowingLabel, { color: recording ? '#EF4444' : C.accent }]}>
+                  {recording ? 'Recording…' : 'Your turn — repeat the sentence'}
+                </Text>
               </View>
             ) : shadowPhase === 'listening' ? (
               <View style={sh.shadowingIndicator}>
@@ -311,6 +376,16 @@ export function ShadowScreen() {
               </View>
             ) : null}
             <Text style={[sh.activeSentence, { color: C.text }]}>{sentence}</Text>
+            {recordingUri && shadowPhase === 'idle' && mode === 'shadow' && (
+              <TouchableOpacity style={[sh.playbackBtn, { backgroundColor: C.bgAlt, borderColor: C.border }]} onPress={playRecording}>
+                {isPlaying
+                  ? <Icons.Pause size={14} color={C.primary} />
+                  : <Icons.Play size={14} color={C.primary} />}
+                <Text style={[sh.playbackBtnText, { color: C.primary }]}>
+                  {isPlaying ? 'Stop' : 'Hear yourself'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Mode hint */}
@@ -512,4 +587,7 @@ const sh = StyleSheet.create({
   transpBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   replayBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   playBtn: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.18, shadowRadius: 6, elevation: 4 },
+  recDot: { width: 8, height: 8, borderRadius: 4 },
+  playbackBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, marginTop: 12, alignSelf: 'flex-start' },
+  playbackBtnText: { fontSize: 13, fontFamily: Fonts.medium },
 })

@@ -6,6 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import * as Speech from 'expo-speech'
+import { Audio } from 'expo-av'
+import type { AVPlaybackStatus } from 'expo-av'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../lib/useAuth'
 import { Fonts } from '../../lib/theme'
@@ -22,6 +24,7 @@ interface Track {
 interface Article {
   id: string; title: string; level: string; topic: string
   text: string; word_count: number; estimated_minutes: number
+  audio_url?: string
 }
 interface MCQ {
   question: string; options: string[]; correct: number; explanation: string
@@ -69,6 +72,10 @@ export function ListenScreen() {
   const sentencesRef = useRef<string[]>([])
   const sentenceIdxRef = useRef(0)
 
+  // expo-av sound for real audio_url playback
+  const soundRef = useRef<Audio.Sound | null>(null)
+  const [audioProgress, setAudioProgress] = useState(0)   // 0-1
+
   // Quiz state
   const [qIdx, setQIdx]             = useState(0)
   const [selected, setSelected]     = useState<number | null>(null)
@@ -88,10 +95,12 @@ export function ListenScreen() {
   }, [])
 
   // ── Cleanup speech on unmount ────────────────────────────────────────────────
-  useEffect(() => { return () => { Speech.stop() } }, [])
+  useEffect(() => { return () => { Speech.stop(); soundRef.current?.unloadAsync() } }, [])
 
   // ── Open a track ────────────────────────────────────────────────────────────
   async function openTrack(track: Track) {
+    soundRef.current?.unloadAsync()
+    soundRef.current = null
     setLoadingTrack(true)
     setView('player')
     setArticle(null)
@@ -99,6 +108,7 @@ export function ListenScreen() {
     setPlaying(false)
     setFinished(false)
     setPlayProgress(0)
+    setAudioProgress(0)
     setQIdx(0)
     setSelected(null)
     setScore(0)
@@ -126,12 +136,36 @@ export function ListenScreen() {
   }
 
   // ── Play / pause ────────────────────────────────────────────────────────────
-  function startPlayback(fromStart = false) {
+  async function startPlayback(fromStart = false) {
     if (!article) return
+
+    // Real audio via expo-av
+    if (article.audio_url) {
+      if (fromStart) setAudioProgress(0)
+      setPlaying(true)
+      try {
+        if (!soundRef.current) {
+          await Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
+          const { sound } = await Audio.Sound.createAsync({ uri: article.audio_url }, { shouldPlay: true, rate: SPEEDS[speedIdx]!.rate, pitchCorrectionQuality: Audio.PitchCorrectionQuality.High })
+          soundRef.current = sound
+          sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
+            if (!status.isLoaded) return
+            if (status.durationMillis) setAudioProgress(status.positionMillis / status.durationMillis)
+            if (status.didJustFinish) { setPlaying(false); setFinished(true); setAudioProgress(1) }
+          })
+        } else {
+          if (fromStart) await soundRef.current.setPositionAsync(0)
+          await soundRef.current.setRateAsync(SPEEDS[speedIdx]!.rate, true)
+          await soundRef.current.playAsync()
+        }
+      } catch { setPlaying(false) }
+      return
+    }
+
+    // TTS fallback
     const sentences = sentencesRef.current
     if (sentences.length === 0) return
     const rate = SPEEDS[speedIdx]!.rate
-
     setPlaying(true)
     if (fromStart) sentenceIdxRef.current = 0
 
@@ -157,16 +191,27 @@ export function ListenScreen() {
     speakNext()
   }
 
-  function pausePlayback() {
-    Speech.stop()
+  async function pausePlayback() {
+    if (article?.audio_url && soundRef.current) {
+      await soundRef.current.pauseAsync()
+    } else {
+      Speech.stop()
+    }
     setPlaying(false)
   }
 
-  function replayTrack() {
-    Speech.stop()
+  async function replayTrack() {
+    if (article?.audio_url && soundRef.current) {
+      await soundRef.current.stopAsync()
+      await soundRef.current.unloadAsync()
+      soundRef.current = null
+    } else {
+      Speech.stop()
+    }
     setPlaying(false)
     setFinished(false)
     setPlayProgress(0)
+    setAudioProgress(0)
     sentenceIdxRef.current = 0
   }
 
@@ -174,10 +219,13 @@ export function ListenScreen() {
     const wasPlaying = playing
     setSpeedIdx(idx)
     if (wasPlaying) {
-      Speech.stop()
-      setPlaying(false)
-      // Resume from current position with new speed after a brief tick
-      setTimeout(() => startPlayback(false), 80)
+      if (article?.audio_url && soundRef.current) {
+        soundRef.current.setRateAsync(SPEEDS[idx]!.rate, true).catch(() => {})
+      } else {
+        Speech.stop()
+        setPlaying(false)
+        setTimeout(() => startPlayback(false), 80)
+      }
     }
   }
 
@@ -209,11 +257,13 @@ export function ListenScreen() {
     }
   }
 
-  function backToPicker() {
+  async function backToPicker() {
     Speech.stop()
+    if (soundRef.current) { await soundRef.current.unloadAsync(); soundRef.current = null }
     setView('picker')
     setArticle(null)
     setFinished(false)
+    setAudioProgress(0)
   }
 
   // ── Filtered tracks ──────────────────────────────────────────────────────────
@@ -347,9 +397,15 @@ export function ListenScreen() {
 
               {/* Player controls */}
               <View style={[ls.playerCard, { backgroundColor: C.surface }]}>
+                {article.audio_url && (
+                  <View style={[ls.audioSourceBadge, { backgroundColor: 'rgba(22,163,74,.1)' }]}>
+                    <Icons.Volume size={11} color="#16A34A" />
+                    <Text style={[ls.audioSourceText, { color: '#16A34A' }]}>Real audio</Text>
+                  </View>
+                )}
                 {/* Progress bar */}
                 <View style={[ls.progressTrack, { backgroundColor: C.bgAlt }]}>
-                  <View style={[ls.progressFill, { width: `${playProgress * 100}%` as any, backgroundColor: ACCENT }]} />
+                  <View style={[ls.progressFill, { width: `${(article.audio_url ? audioProgress : playProgress) * 100}%` as any, backgroundColor: ACCENT }]} />
                 </View>
 
                 {/* Speed selector */}
@@ -379,7 +435,7 @@ export function ListenScreen() {
 
                   <TouchableOpacity
                     style={[ls.playBtn, { backgroundColor: ACCENT }]}
-                    onPress={playing ? pausePlayback : () => startPlayback(playProgress === 0)}
+                    onPress={playing ? pausePlayback : () => startPlayback((article.audio_url ? audioProgress : playProgress) === 0)}
                     disabled={finished}
                   >
                     {playing
@@ -396,7 +452,7 @@ export function ListenScreen() {
                     ? '✓ Finished — take the quiz below'
                     : playing
                       ? 'Playing…'
-                      : playProgress > 0
+                      : (article.audio_url ? audioProgress : playProgress) > 0
                         ? 'Paused'
                         : 'Tap ▶ to start listening'}
                 </Text>
@@ -611,6 +667,8 @@ const ls = StyleSheet.create({
   replayBtn: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   playBtn:   { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
   statusText: { fontSize: 13, fontFamily: Fonts.regular, textAlign: 'center' },
+  audioSourceBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 8 },
+  audioSourceText: { fontSize: 11, fontFamily: Fonts.medium },
 
   transcriptCard: { borderRadius: 16, padding: 18 },
   transcriptLabel: { fontSize: 10, fontFamily: Fonts.bold, letterSpacing: 1, marginBottom: 10 },

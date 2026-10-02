@@ -29,6 +29,11 @@ export function ProfileScreen() {
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
+  // CEFR level picker
+  const [levelPickerVisible, setLevelPickerVisible] = useState(false)
+  // Daily goal picker
+  const [goalPickerVisible, setGoalPickerVisible] = useState(false)
+
   useEffect(() => {
     async function load() {
       try {
@@ -126,6 +131,26 @@ export function ProfileScreen() {
     }],
   }
 
+  const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+  const DAILY_GOALS = [5, 10, 15, 20, 30, 45, 60]
+
+  async function saveCefrLevel(newLevel: string) {
+    try {
+      const token = await getAccessToken()
+      await apiFetch('/api/users/preferences', {
+        method: 'PATCH',
+        body: JSON.stringify({ ...userPrefs, cefr_level: newLevel }),
+      }, token)
+      setProfileData(prev => prev ? { ...prev, user: { ...prev.user, level: newLevel } } : prev)
+    } catch {
+      Alert.alert('Error', 'Could not update level.')
+    }
+  }
+
+  async function saveDailyGoal(minutes: number) {
+    await savePrefs({ daily_goal_minutes: minutes })
+  }
+
   const level = profileData?.user.level ?? '…'
   const streak = profileData?.user.streak ?? 0
 
@@ -133,8 +158,8 @@ export function ProfileScreen() {
     {
       title: 'Learning',
       rows: [
-        { icon: <Icons.Target size={16} color={C.primary} />, iconBg: 'rgba(55,48,163,.12)', label: 'CEFR Level', value: level, chevron: false },
-        { icon: <Icons.Clock size={16} color={C.accentD} />, iconBg: 'rgba(245,158,11,.15)', label: 'Daily Goal', value: `${userPrefs.daily_goal_minutes ?? 30} min`, chevron: false },
+        { icon: <Icons.Target size={16} color={C.primary} />, iconBg: 'rgba(55,48,163,.12)', label: 'CEFR Level', value: level, chevron: true, onPress: () => setLevelPickerVisible(true) },
+        { icon: <Icons.Clock size={16} color={C.accentD} />, iconBg: 'rgba(245,158,11,.15)', label: 'Daily Goal', value: `${userPrefs.daily_goal_minutes ?? 30} min`, chevron: true, onPress: () => setGoalPickerVisible(true) },
         { icon: <Icons.Bell size={16} color={C.success} />, iconBg: 'rgba(22,163,74,.1)', label: 'Daily Reminder', toggle: true, value: dailyReminder ? reminderTime : undefined },
       ],
     },
@@ -203,6 +228,48 @@ export function ProfileScreen() {
 
         <Text style={[pf.version, { color: C.text3 }]}>Zungo v1.0.0 · Made with ♥ for German learners</Text>
       </ScrollView>
+
+      {/* CEFR Level Picker */}
+      <Modal visible={levelPickerVisible} transparent animationType="slide" onRequestClose={() => setLevelPickerVisible(false)}>
+        <TouchableOpacity style={pf.modalOverlay} activeOpacity={1} onPress={() => setLevelPickerVisible(false)}>
+          <View style={[pf.sheet, { backgroundColor: C.surface }]} onStartShouldSetResponder={() => true}>
+            <View style={[pf.sheetHandle, { backgroundColor: C.border }]} />
+            <Text style={[pf.sheetTitle, { color: C.text }]}>CEFR Level</Text>
+            <Text style={[{ color: C.text3, fontSize: 13, fontFamily: Fonts.regular, marginBottom: 16 }]}>Select your current German level</Text>
+            {CEFR_LEVELS.map(l => (
+              <TouchableOpacity
+                key={l}
+                style={[pf.pickerRow, { borderColor: level === l ? C.primary : C.border, backgroundColor: level === l ? 'rgba(55,48,163,.07)' : C.bg }]}
+                onPress={() => { saveCefrLevel(l); setLevelPickerVisible(false) }}
+              >
+                <Text style={[pf.pickerRowText, { color: level === l ? C.primary : C.text, fontFamily: level === l ? Fonts.semibold : Fonts.regular }]}>{l}</Text>
+                {level === l && <Icons.CheckCircle size={18} color={C.primary} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Daily Goal Picker */}
+      <Modal visible={goalPickerVisible} transparent animationType="slide" onRequestClose={() => setGoalPickerVisible(false)}>
+        <TouchableOpacity style={pf.modalOverlay} activeOpacity={1} onPress={() => setGoalPickerVisible(false)}>
+          <View style={[pf.sheet, { backgroundColor: C.surface }]} onStartShouldSetResponder={() => true}>
+            <View style={[pf.sheetHandle, { backgroundColor: C.border }]} />
+            <Text style={[pf.sheetTitle, { color: C.text }]}>Daily Goal</Text>
+            <Text style={[{ color: C.text3, fontSize: 13, fontFamily: Fonts.regular, marginBottom: 16 }]}>How many minutes do you want to study each day?</Text>
+            {DAILY_GOALS.map(mins => (
+              <TouchableOpacity
+                key={mins}
+                style={[pf.pickerRow, { borderColor: (userPrefs.daily_goal_minutes ?? 30) === mins ? C.primary : C.border, backgroundColor: (userPrefs.daily_goal_minutes ?? 30) === mins ? 'rgba(55,48,163,.07)' : C.bg }]}
+                onPress={() => { saveDailyGoal(mins); setGoalPickerVisible(false) }}
+              >
+                <Text style={[pf.pickerRowText, { color: (userPrefs.daily_goal_minutes ?? 30) === mins ? C.primary : C.text, fontFamily: (userPrefs.daily_goal_minutes ?? 30) === mins ? Fonts.semibold : Fonts.regular }]}>{mins} minutes</Text>
+                {(userPrefs.daily_goal_minutes ?? 30) === mins && <Icons.CheckCircle size={18} color={C.primary} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Edit Profile Modal */}
       <Modal visible={editVisible} transparent animationType="slide" onRequestClose={() => setEditVisible(false)}>
@@ -281,4 +348,6 @@ const pf = StyleSheet.create({
   fieldError: { fontSize: 13, fontFamily: Fonts.regular, marginBottom: 12 },
   sheetSaveBtn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
   sheetSaveBtnText: { fontSize: 16, fontFamily: Fonts.bold, color: '#FFFFFF' },
+  pickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 8 },
+  pickerRowText: { fontSize: 16 },
 })
