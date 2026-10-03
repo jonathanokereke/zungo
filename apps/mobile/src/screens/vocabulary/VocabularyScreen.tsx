@@ -4,7 +4,7 @@ import {
   TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useNavigation, useRoute } from '@react-navigation/native'
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native'
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../lib/useAuth'
@@ -73,6 +73,9 @@ export function VocabularyScreen() {
   }
 
   useEffect(() => { loadWords(initialPos) }, [])
+
+  // Refresh when navigated back to (e.g. after importing a deck)
+  useFocusEffect(useCallback(() => { loadWords(filter, 1, false) }, [filter]))
 
   async function deleteWord(word: Word) {
     Alert.alert(

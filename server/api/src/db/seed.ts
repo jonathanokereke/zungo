@@ -1,6 +1,8 @@
 import { db } from './index'
-import { writing_prompts } from './schema'
+import { writing_prompts, vocab_deck_words } from './schema'
 import { seedWordBank } from './seedWords'
+import { seedDecks } from './seedDecks'
+import { sql } from 'drizzle-orm'
 
 const ALL_PROMPTS = [
   // A1
@@ -65,4 +67,12 @@ export async function seedSystemData() {
 
   // ── Word bank (system vocabulary, shared across all users) ────────────────
   await seedWordBank()
+
+  // ── Vocabulary decks ─────────────────────────────────────────────────────
+  // Re-seed if total word count < 1100 (22 decks × 50 words)
+  const [wordCountRow] = await db.select({ count: sql<number>`count(*)::int` }).from(vocab_deck_words)
+  if ((wordCountRow?.count ?? 0) < 1100) {
+    console.log('[seed] vocab deck words below expected count — re-seeding decks')
+    await seedDecks()
+  }
 }

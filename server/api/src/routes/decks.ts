@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/index'
 import { users, words, reviews, vocab_decks, vocab_deck_words, user_deck_imports } from '../db/schema'
-import { eq, and, inArray } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 import { verifyAuth, type Auth0JwtPayload } from '../lib/auth0'
 
 async function getUser(auth0Id: string) {
@@ -20,9 +20,20 @@ export async function deckRoutes(app: FastifyInstance) {
     const imports = await db.select({ deck_id: user_deck_imports.deck_id })
       .from(user_deck_imports).where(eq(user_deck_imports.user_id, user.id))
 
+    // Get real word counts from the words table (not the cached field)
+    const counts = await db.select({
+      deck_id: vocab_deck_words.deck_id,
+      count: sql<number>`count(*)::int`,
+    }).from(vocab_deck_words).groupBy(vocab_deck_words.deck_id)
+    const countMap = new Map(counts.map(c => [c.deck_id, c.count]))
+
     const importedIds = new Set(imports.map(i => i.deck_id))
     return reply.send({
-      data: allDecks.map(d => ({ ...d, imported: importedIds.has(d.id) })),
+      data: allDecks.map(d => ({
+        ...d,
+        word_count: countMap.get(d.id) ?? d.word_count,
+        imported: importedIds.has(d.id),
+      })),
     })
   })
 
@@ -44,7 +55,7 @@ export async function deckRoutes(app: FastifyInstance) {
       .where(and(eq(user_deck_imports.user_id, user.id), eq(user_deck_imports.deck_id, id)))
       .limit(1)
 
-    return reply.send({ data: { ...deck, words: deckWords, imported: !!imported } })
+    return reply.send({ data: { ...deck, word_count: deckWords.length, words: deckWords, imported: !!imported } })
   })
 
   // POST /api/decks/:id/import — import all deck words into the user's vocabulary

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator, ScrollView, StyleSheet, Text,
+  ActivityIndicator, Alert, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -53,7 +53,7 @@ export function DecksScreen() {
   const [view, setView] = useState<ScreenView>('list')
   const [decks, setDecks] = useState<Deck[]>([])
   const [loading, setLoading] = useState(true)
-  const [levelFilter, setLevelFilter] = useState('All')
+  const [userLevel, setUserLevel] = useState<string | null>(null)
 
   const [detail, setDetail] = useState<DeckDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -66,9 +66,17 @@ export function DecksScreen() {
     setLoading(true)
     try {
       const token = await getAccessToken()
-      const data = await apiFetch<Deck[]>('/api/decks', {}, token)
+      const [data, progress] = await Promise.all([
+        apiFetch<Deck[]>('/api/decks', {}, token),
+        apiFetch<{ user: { level: string } }>('/api/progress', {}, token).catch(() => null),
+      ])
       setDecks(data)
-    } catch {} finally { setLoading(false) }
+      if (progress?.user?.level) setUserLevel(progress.user.level)
+    } catch (e: any) {
+      Alert.alert('Could not load decks', e?.message ?? 'Check your connection and try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function openDeck(deck: Deck) {
@@ -79,7 +87,11 @@ export function DecksScreen() {
       const data = await apiFetch<DeckDetail>(`/api/decks/${deck.id}`, {}, token)
       setDetail(data)
       setView('detail')
-    } catch {} finally { setDetailLoading(false) }
+    } catch (e: any) {
+      Alert.alert('Could not open deck', e?.message ?? 'Check your connection and try again.')
+    } finally {
+      setDetailLoading(false)
+    }
   }
 
   async function importDeck() {
@@ -92,12 +104,17 @@ export function DecksScreen() {
         { method: 'POST' },
         token,
       )
-      setImportResult({ added: resp.added })
+      const added = resp.added ?? 0
+      setImportResult({ added })
       setDetail(d => d ? { ...d, imported: true } : d)
       setDecks(ds => ds.map(d => d.id === detail.id ? { ...d, imported: true } : d))
-      // Give user a moment to read the success message then take them to Vocabulary
-      setTimeout(() => navigation.navigate('Vocabulary'), 1500)
-    } catch {} finally { setImporting(false) }
+      // Navigate to Vocabulary after a short pause so user can read the confirmation
+      setTimeout(() => navigation.navigate('Vocabulary'), 2000)
+    } catch (e: any) {
+      Alert.alert('Import failed', e?.message ?? 'Something went wrong. Please try again.')
+    } finally {
+      setImporting(false)
+    }
   }
 
   function back() {
@@ -106,7 +123,9 @@ export function DecksScreen() {
     setImportResult(null)
   }
 
-  const filtered = levelFilter === 'All' ? decks : decks.filter(d => d.level === levelFilter)
+  const CEFR_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+  const userLevelIdx = userLevel ? CEFR_ORDER.indexOf(userLevel) : CEFR_ORDER.length - 1
+  const filtered = decks.filter(d => CEFR_ORDER.indexOf(d.level) <= userLevelIdx)
 
   // ── Detail view ──────────────────────────────────────────────────────────────
   if (view === 'detail' && detail) {
@@ -201,27 +220,8 @@ export function DecksScreen() {
     <SafeAreaView style={[st.container, { backgroundColor: C.bg }]} edges={['bottom']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
         <Text style={[st.headerSub, { color: C.text3, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 }]}>
-          Curated word sets by topic and level. Import any deck to add the words to your review queue.
+          Curated word sets at your level and below. Import any deck to add words to your review queue.
         </Text>
-
-        {/* Level filter */}
-        <ScrollView
-          horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={st.filterRow}
-        >
-          {LEVELS.map(l => (
-            <TouchableOpacity
-              key={l}
-              style={[
-                st.filterChip,
-                { backgroundColor: levelFilter === l ? C.primary : C.surface, borderColor: C.border },
-              ]}
-              onPress={() => setLevelFilter(l)}
-            >
-              <Text style={[st.filterChipText, { color: levelFilter === l ? '#FFFFFF' : C.text3 }]}>{l}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
 
         {/* Deck grid */}
         {loading ? (

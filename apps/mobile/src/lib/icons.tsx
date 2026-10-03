@@ -465,6 +465,16 @@ export const PlusIcon = icon(() => (
   </>
 ))
 
+export const PaletteIcon = icon(() => (
+  <>
+    <Path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.1 0 2-.9 2-2v-.5c0-.28-.11-.53-.29-.71a.996.996 0 0 1 0-1.42c.18-.18.29-.43.29-.71V16c0-1.1.9-2 2-2h2c2.21 0 4-1.79 4-4 0-4.42-4.03-8-9-8z" />
+    <Path d="M6.5 13a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+    <Path d="M9.5 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+    <Path d="M14.5 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+    <Path d="M17.5 13a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+  </>
+))
+
 // Convenience named export
 export const Icons = {
   Home: HomeIcon,
@@ -522,4 +532,5 @@ export const Icons = {
   Check: CheckIcon,
   Plus: PlusIcon,
   FlipCard,
+  Palette: PaletteIcon,
 }
