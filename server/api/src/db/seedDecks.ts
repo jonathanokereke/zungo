@@ -246,11 +246,11 @@ const DECKS: DeckDef[] = [
   },
 ]
 
-async function main() {
+export async function seedDecks() {
   const existing = await db.select().from(vocab_decks).limit(1)
   if (existing.length > 0) {
     console.log('[seed] vocab_decks already populated — skipping')
-    process.exit(0)
+    return
   }
 
   for (const def of DECKS) {
@@ -270,7 +270,9 @@ async function main() {
   }
 
   console.log(`[seed] ${DECKS.length} decks seeded`)
-  process.exit(0)
 }
 
-main().catch(e => { console.error(e); process.exit(1) })
+// Allow running directly: tsx src/db/seedDecks.ts
+if (process.argv[1]?.endsWith('seedDecks.ts') || process.argv[1]?.endsWith('seedDecks.js')) {
+  import('dotenv/config').then(() => seedDecks()).catch(e => { console.error(e); process.exit(1) })
+}
