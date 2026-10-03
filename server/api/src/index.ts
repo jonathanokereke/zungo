@@ -3,15 +3,10 @@ import * as Sentry from '@sentry/node'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import { env } from './lib/env'
-
-if (env.NODE_ENV === 'production' && process.env.SENTRY_DSN) {
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: env.NODE_ENV,
-    tracesSampleRate: 0.2,
-  })
-}
-
+import { migrate } from 'drizzle-orm/postgres-js/migrator'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { db } from './db/index'
 import { authRoutes } from './routes/auth'
 import { wordRoutes } from './routes/words'
 import { reviewRoutes } from './routes/reviews'
@@ -29,6 +24,14 @@ import { deckRoutes } from './routes/decks'
 import { listeningRoutes } from './routes/listening'
 import { shadowRoutes } from './routes/shadow'
 import { seedSystemData } from './db/seed'
+
+if (env.NODE_ENV === 'production' && process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+    tracesSampleRate: 0.2,
+  })
+}
 
 const app = Fastify({ logger: env.NODE_ENV === 'development' })
 
@@ -64,9 +67,10 @@ await shadowRoutes(app)
 
 app.get('/health', async () => ({ status: 'ok' }))
 
-if (env.NODE_ENV === 'development') {
-  await seedSystemData()
-}
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+await migrate(db, { migrationsFolder: path.join(__dirname, 'db/migrations') })
+
+await seedSystemData()
 
 try {
   await app.listen({ port: env.PORT, host: '0.0.0.0' })
