@@ -8,6 +8,7 @@ import { ReadScreen } from '../screens/read/ReadScreen'
 import { VocabularyScreen } from '../screens/vocabulary/VocabularyScreen'
 import { ShadowScreen } from '../screens/shadow/ShadowScreen'
 import { DecksScreen } from '../screens/decks/DecksScreen'
+import { FillerPhrasesScreen } from '../screens/learn/FillerPhrasesScreen'
 import { GrammarRefScreen } from '../screens/grammar/GrammarRefScreen'
 import { ListenScreen } from '../screens/listen/ListenScreen'
 import { LightColors as C } from '../lib/ThemeContext'
@@ -22,6 +23,7 @@ export type RootStackParamList = {
   Vocabulary: { pos?: string } | undefined
   Shadow: undefined
   Decks: undefined
+  FillerPhrases: { userLevel?: string } | undefined
   GrammarRef: { topic: string; subtitle: string; color: string }
   Listen: undefined
 }
@@ -120,6 +122,18 @@ export function RootNavigator() {
         options={{
           headerShown: true,
           headerTitle: 'Vocabulary Decks',
+          headerTintColor: C.primary,
+          headerStyle: { backgroundColor: C.bg },
+          headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: '700', color: C.text },
+        }}
+      />
+      <Stack.Screen
+        name="FillerPhrases"
+        component={FillerPhrasesScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Filler Phrases',
           headerTintColor: C.primary,
           headerStyle: { backgroundColor: C.bg },
           headerShadowVisible: false,

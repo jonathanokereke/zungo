@@ -47,6 +47,7 @@ export function WriteScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const scrollRef = useRef<ScrollView>(null)
 
+  const [mode, setMode] = useState<'prompt' | 'freestyle'>('prompt')
   const [prompt, setPrompt] = useState<Prompt | null>(null)
   const [promptLoading, setPromptLoading] = useState(true)
   const [text, setText] = useState('')
@@ -135,7 +136,8 @@ export function WriteScreen() {
 
         xhr.onerror = () => reject(new Error('Network error'))
 
-        xhr.send(JSON.stringify({ prompt: prompt?.prompt ?? '', user_text: text }))
+        const activePrompt = mode === 'freestyle' ? 'Freitext — schreibe frei auf Deutsch' : (prompt?.prompt ?? '')
+        xhr.send(JSON.stringify({ prompt: activePrompt, user_text: text }))
       })
     } catch (e: any) {
       setError(e?.message ?? 'Could not get feedback. Please try again.')
@@ -158,19 +160,36 @@ export function WriteScreen() {
               <Text style={[wr.title, { color: C.text }]}>Schreiben</Text>
               <Text style={[wr.subtitle, { color: C.text2 }]}>AI-powered German writing practice</Text>
             </View>
-            <TouchableOpacity
-              style={[wr.chatBtn, { backgroundColor: C.bgAlt, borderColor: C.border }]}
-              onPress={() => navigation.navigate('Chat')}
-            >
-              <Icons.MessageSquare size={14} color={C.primary} />
-              <Text style={[wr.chatBtnText, { color: C.primary }]}>Chat</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={[wr.chatBtn, { backgroundColor: mode === 'freestyle' ? C.primary : C.bgAlt, borderColor: mode === 'freestyle' ? C.primary : C.border }]}
+                onPress={() => { setMode(m => m === 'freestyle' ? 'prompt' : 'freestyle'); setFeedback(null); setText(''); setError(null) }}
+              >
+                <Icons.Sparkles size={14} color={mode === 'freestyle' ? '#FFFFFF' : C.primary} />
+                <Text style={[wr.chatBtnText, { color: mode === 'freestyle' ? '#FFFFFF' : C.primary }]}>Free Style</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[wr.chatBtn, { backgroundColor: C.bgAlt, borderColor: C.border }]}
+                onPress={() => navigation.navigate('Chat')}
+              >
+                <Icons.MessageSquare size={14} color={C.primary} />
+                <Text style={[wr.chatBtnText, { color: C.primary }]}>Chat</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {!isOnline && <OfflineNotice message="AI writing correction requires an internet connection." />}
 
-          {/* Prompt card */}
-          {promptLoading ? (
+          {/* Prompt card / Free Style banner */}
+          {mode === 'freestyle' ? (
+            <View style={[wr.promptCard, { backgroundColor: 'rgba(124,58,237,.06)', borderColor: 'rgba(124,58,237,.25)' }]}>
+              <View style={wr.promptHeader}>
+                <Icons.Sparkles size={12} color="#7C3AED" />
+                <Text style={[wr.promptLabel, { color: '#7C3AED' }]}>Free Style</Text>
+              </View>
+              <Text style={[wr.promptText, { color: C.text }]}>Write anything you like in German — no topic required. Your AI tutor will correct grammar, vocabulary, and style for your level.</Text>
+            </View>
+          ) : promptLoading ? (
             <View style={[wr.promptCard, { backgroundColor: 'rgba(245,158,11,.06)', borderColor: 'rgba(245,158,11,.25)' }]}>
               <ActivityIndicator size="small" color={C.accentD} />
             </View>
@@ -199,7 +218,7 @@ export function WriteScreen() {
                   multiline
                   value={text}
                   onChangeText={t => { setText(t); setError(null) }}
-                  placeholder="Schreiben Sie auf Deutsch… (min. 50 Zeichen)"
+                  placeholder={mode === 'freestyle' ? 'Schreibe frei auf Deutsch… (min. 50 Zeichen)' : 'Schreiben Sie auf Deutsch… (min. 50 Zeichen)'}
                   placeholderTextColor={C.text3}
                   editable={!submitting}
                   textAlignVertical="top"
@@ -292,13 +311,24 @@ export function WriteScreen() {
                   <Icons.Pencil size={14} color={C.text2} />
                   <Text style={[wr.actionBtnText, { color: C.text2 }]}>Revise</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[wr.actionBtn, { backgroundColor: C.primary }]}
-                  onPress={loadPrompt}
-                >
-                  <Icons.Refresh size={14} color="#FFFFFF" />
-                  <Text style={[wr.actionBtnText, { color: '#FFFFFF' }]}>New Prompt</Text>
-                </TouchableOpacity>
+                {mode === 'prompt' && (
+                  <TouchableOpacity
+                    style={[wr.actionBtn, { backgroundColor: C.primary }]}
+                    onPress={loadPrompt}
+                  >
+                    <Icons.Refresh size={14} color="#FFFFFF" />
+                    <Text style={[wr.actionBtnText, { color: '#FFFFFF' }]}>New Prompt</Text>
+                  </TouchableOpacity>
+                )}
+                {mode === 'freestyle' && (
+                  <TouchableOpacity
+                    style={[wr.actionBtn, { backgroundColor: '#7C3AED' }]}
+                    onPress={() => { setFeedback(null); setText(''); setError(null) }}
+                  >
+                    <Icons.Sparkles size={14} color="#FFFFFF" />
+                    <Text style={[wr.actionBtnText, { color: '#FFFFFF' }]}>Write Again</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}

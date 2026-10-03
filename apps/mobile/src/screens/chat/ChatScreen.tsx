@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../lib/ThemeContext'
 import { Fonts } from '../../lib/theme'
 import { Icons } from '../../lib/icons'
@@ -70,6 +70,9 @@ export function ChatScreen() {
   const { isOnline } = useNetwork()
   const { getAccessToken } = useAuth()
   const navigation = useNavigation()
+  const insets = useSafeAreaInsets()
+  // Stack header height = nav bar (44) + status bar (safe area top)
+  const headerHeight = 44 + insets.top
   const [activeScenario, setActiveScenario] = useState(0)
   const [messages, setMessages] = useState<Message[]>([])
   const [userLevel, setUserLevel] = useState('B1')
@@ -257,7 +260,7 @@ export function ChatScreen() {
 
   return (
     <SafeAreaView style={[ms.container, { backgroundColor: C.bg }]} edges={['top']}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight}>
 
         {!isOnline && <OfflineNotice message="Chat requires an internet connection. You'll be able to send messages once you're back online." />}
 

@@ -191,6 +191,22 @@ export function LearnScreen() {
           <Icons.ChevronRight size={18} color={C.text3} />
         </TouchableOpacity>
 
+        {/* Filler phrases */}
+        <TouchableOpacity
+          style={[sc.decksCard, { backgroundColor: C.surface, borderColor: C.border }]}
+          onPress={() => navigation.navigate('FillerPhrases', { userLevel: stats?.user.level })}
+          activeOpacity={0.8}
+        >
+          <View style={[sc.decksIconWrap, { backgroundColor: 'rgba(124,58,237,.1)' }]}>
+            <Icons.MessageSquare size={20} color="#7C3AED" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[sc.decksTitle, { color: C.text }]}>Filler Phrases</Text>
+            <Text style={[sc.decksSub, { color: C.text3 }]}>Natural connectors and expressions for your level</Text>
+          </View>
+          <Icons.ChevronRight size={18} color={C.text3} />
+        </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   )
